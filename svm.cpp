@@ -250,7 +250,7 @@ private:
 	}
 	double kernel_precomputed(int i, int j) const
 	{
-		return x[i][(int)(x[j][0].value)].value;
+		return boost::get<double>(x[i][(int)(boost::get<double>(x[j][0].value))].value);
 	}
 };
 
@@ -305,7 +305,7 @@ double Kernel::dot(const svm_node *px, const svm_node *py)
 	{
 		if(px->index == py->index)
 		{
-			sum += px->value * py->value;  //TODO (svm node .value = string ?)
+			sum += boost::get<double>(px->value) * boost::get<double>(py->value);
 			++px;
 			++py;
 		}
@@ -336,7 +336,7 @@ double Kernel::k_function(const svm_node *x, const svm_node *y,
 			{
 				if(x->index == y->index)
 				{
-					double d = x->value - y->value;  //TODO (svm node .value = string ?)
+					double d = boost::get<double>(x->value) - boost::get<double>(y->value);
 					sum += d*d;
 					++x;
 					++y;
@@ -345,12 +345,12 @@ double Kernel::k_function(const svm_node *x, const svm_node *y,
 				{
 					if(x->index > y->index)
 					{	
-						sum += y->value * y->value;  //TODO (svm node .value = string ?)
+						sum += boost::get<double>(y->value) * boost::get<double>(y->value);
 						++y;
 					}
 					else
 					{
-						sum += x->value * x->value;  //TODO (svm node .value = string ?)
+						sum += boost::get<double>(x->value) * boost::get<double>(x->value);
 						++x;
 					}
 				}
@@ -358,13 +358,13 @@ double Kernel::k_function(const svm_node *x, const svm_node *y,
 
 			while(x->index != -1)
 			{
-				sum += x->value * x->value;  //TODO (svm node .value = string ?)
+				sum += boost::get<double>(x->value) * boost::get<double>(x->value);
 				++x;
 			}
 
 			while(y->index != -1)
 			{
-				sum += y->value * y->value;  //TODO (svm node .value = string ?)
+				sum += boost::get<double>(y->value) * boost::get<double>(y->value);
 				++y;
 			}
 			
@@ -375,7 +375,7 @@ double Kernel::k_function(const svm_node *x, const svm_node *y,
 		case GOWER:
 			return 0;  //TODO : a compléter
 		case PRECOMPUTED:  //x: test (validation), y: SV
-			return x[(int)(y->value)].value;  //TODO (svm node .value = string ?)
+			return boost::get<double>(x[(int)(boost::get<double>(y->value))].value);
 		default:
 			return 0;  // Unreachable 
 	}
@@ -2724,11 +2724,11 @@ int svm_save_model(const char *model_file_name, const svm_model *model)
 		const svm_node *p = SV[i];
 
 		if(param.kernel_type == PRECOMPUTED)
-			fprintf(fp,"0:%d ",(int)(p->value));
+			fprintf(fp,"0:%d ",(int)(boost::get<double>(p->value)));
 		else
 			while(p->index != -1)
 			{
-				fprintf(fp,"%d:%.8g ",p->index,p->value);
+				fprintf(fp,"%d:%.8g ",p->index,boost::get<double>(p->value));
 				p++;
 			}
 		fprintf(fp, "\n");

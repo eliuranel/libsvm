@@ -24,7 +24,8 @@ void exit_with_help()
 	"	1 -- polynomial: (gamma*u'*v + coef0)^degree\n"
 	"	2 -- radial basis function: exp(-gamma*|u-v|^2)\n"
 	"	3 -- sigmoid: tanh(gamma*u'*v + coef0)\n"
-	"	4 -- precomputed kernel (kernel values in training_set_file)\n"
+	"	4 -- gower: #TODO\n"
+	"	5 -- precomputed kernel (kernel values in training_set_file)\n"
 	"-d degree : set degree in kernel function (default 3)\n"
 	"-g gamma : set gamma in kernel function (default 1/num_features)\n"
 	"-r coef0 : set coef0 in kernel function (default 0)\n"
@@ -312,8 +313,8 @@ void read_problem(const char *filename)
 	rewind(fp);
 
 	prob.y = Malloc(double,prob.l);
-	prob.x = Malloc(struct svm_node *,prob.l);  //TODO (svm node .value = string ?)
-	x_space = Malloc(struct svm_node,elements); //TODO (svm node .value = string ?)
+	prob.x = Malloc(struct svm_node *,prob.l);
+	x_space = Malloc(struct svm_node,elements);
 
 	max_index = 0;
 	j=0;
@@ -321,7 +322,7 @@ void read_problem(const char *filename)
 	{
 		inst_max_index = -1; // strtol gives 0 if wrong format, and precomputed kernel has <index> start from 0
 		readline(fp);
-		prob.x[i] = &x_space[j];  //TODO (svm node .value = string ?)
+		prob.x[i] = &x_space[j];
 		label = strtok(line," \t\n");
 		if(label == NULL) // empty line
 			exit_input_error(i+1);
@@ -369,7 +370,7 @@ void read_problem(const char *filename)
 				fprintf(stderr,"Wrong input format: first column must be 0:sample_serial_number\n");
 				exit(1);
 			}
-			if ((int)prob.x[i][0].value <= 0 || (int)prob.x[i][0].value > max_index) //TODO (svm node .value = string ?)
+			if ((int)boost::get<double>(prob.x[i][0].value) <= 0 || (int)boost::get<double>(prob.x[i][0].value) > max_index) //TODO (svm node .value = string ?)
 			{
 				fprintf(stderr,"Wrong input format: sample_serial_number out of range\n");
 				exit(1);

@@ -3,23 +3,18 @@
 
 #define LIBSVM_VERSION 320
 
+#include "boost/variant.hpp"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 extern int libsvm_version;
 
-/*template <typename T>
 struct svm_node
 {
 	int index;
-	T value;  //TODO : change this, (string value ?)
-}; */
-
-struct svm_node
-{
-	int index;
-	double value;  //TODO : change this, (string value ?)
+	boost::variant< double, std::string > value;
 };
 
 struct svm_problem  //TODO ajouter un tableau de taille ? rescensant les types pour chaque label
