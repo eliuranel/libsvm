@@ -138,7 +138,8 @@ options:
 	1 -- polynomial: (gamma*u'*v + coef0)^degree
 	2 -- radial basis function: exp(-gamma*|u-v|^2)
 	3 -- sigmoid: tanh(gamma*u'*v + coef0)
-	4 -- precomputed kernel (kernel values in training_set_file)
+	4 -- gower: #TODO
+	5 -- precomputed kernel (kernel values in training_set_file)
 -d degree : set degree in kernel function (default 3)
 -g gamma : set gamma in kernel function (default 1/num_features)
 -r coef0 : set coef0 in kernel function (default 0)
@@ -357,7 +358,7 @@ to classify new data.
 	struct svm_node
 	{
 		int index;
-		double value;
+		double value;  # => To change (string value ?)
 	};
 
     index = -1 indicates the end of one vector. Note that indices must

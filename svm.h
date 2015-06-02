@@ -9,13 +9,20 @@ extern "C" {
 
 extern int libsvm_version;
 
+/*template <typename T>
 struct svm_node
 {
 	int index;
-	double value;
+	T value;  //TODO : change this, (string value ?)
+}; */
+
+struct svm_node
+{
+	int index;
+	double value;  //TODO : change this, (string value ?)
 };
 
-struct svm_problem
+struct svm_problem  //TODO ajouter un tableau de taille ? rescensant les types pour chaque label
 {
 	int l;
 	double *y;
@@ -23,7 +30,7 @@ struct svm_problem
 };
 
 enum { C_SVC, NU_SVC, ONE_CLASS, EPSILON_SVR, NU_SVR };	/* svm_type */
-enum { LINEAR, POLY, RBF, SIGMOID, PRECOMPUTED }; /* kernel_type */
+enum { LINEAR, POLY, RBF, SIGMOID, GOWER, PRECOMPUTED }; /* kernel_type */
 
 struct svm_parameter
 {

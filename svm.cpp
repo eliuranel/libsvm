@@ -244,6 +244,10 @@ private:
 	{
 		return tanh(gamma*dot(x[i],x[j])+coef0);
 	}
+	double kernel_gower(int i, int j) const
+	{
+		return 0;	//TODO
+	}
 	double kernel_precomputed(int i, int j) const
 	{
 		return x[i][(int)(x[j][0].value)].value;
@@ -267,6 +271,9 @@ Kernel::Kernel(int l, svm_node * const * x_, const svm_parameter& param)
 			break;
 		case SIGMOID:
 			kernel_function = &Kernel::kernel_sigmoid;
+			break;
+		case GOWER:
+			kernel_function = &Kernel::kernel_gower;
 			break;
 		case PRECOMPUTED:
 			kernel_function = &Kernel::kernel_precomputed;
@@ -298,7 +305,7 @@ double Kernel::dot(const svm_node *px, const svm_node *py)
 	{
 		if(px->index == py->index)
 		{
-			sum += px->value * py->value;
+			sum += px->value * py->value;  //TODO (svm node .value = string ?)
 			++px;
 			++py;
 		}
@@ -329,7 +336,7 @@ double Kernel::k_function(const svm_node *x, const svm_node *y,
 			{
 				if(x->index == y->index)
 				{
-					double d = x->value - y->value;
+					double d = x->value - y->value;  //TODO (svm node .value = string ?)
 					sum += d*d;
 					++x;
 					++y;
@@ -338,12 +345,12 @@ double Kernel::k_function(const svm_node *x, const svm_node *y,
 				{
 					if(x->index > y->index)
 					{	
-						sum += y->value * y->value;
+						sum += y->value * y->value;  //TODO (svm node .value = string ?)
 						++y;
 					}
 					else
 					{
-						sum += x->value * x->value;
+						sum += x->value * x->value;  //TODO (svm node .value = string ?)
 						++x;
 					}
 				}
@@ -351,13 +358,13 @@ double Kernel::k_function(const svm_node *x, const svm_node *y,
 
 			while(x->index != -1)
 			{
-				sum += x->value * x->value;
+				sum += x->value * x->value;  //TODO (svm node .value = string ?)
 				++x;
 			}
 
 			while(y->index != -1)
 			{
-				sum += y->value * y->value;
+				sum += y->value * y->value;  //TODO (svm node .value = string ?)
 				++y;
 			}
 			
@@ -365,8 +372,10 @@ double Kernel::k_function(const svm_node *x, const svm_node *y,
 		}
 		case SIGMOID:
 			return tanh(param.gamma*dot(x,y)+param.coef0);
+		case GOWER:
+			return 0;  //TODO : a compléter
 		case PRECOMPUTED:  //x: test (validation), y: SV
-			return x[(int)(y->value)].value;
+			return x[(int)(y->value)].value;  //TODO (svm node .value = string ?)
 		default:
 			return 0;  // Unreachable 
 	}
@@ -2635,7 +2644,7 @@ static const char *svm_type_table[] =
 
 static const char *kernel_type_table[]=
 {
-	"linear","polynomial","rbf","sigmoid","precomputed",NULL
+	"linear","polynomial","rbf","sigmoid","precomputed","gower",NULL
 };
 
 int svm_save_model(const char *model_file_name, const svm_model *model)
@@ -3045,6 +3054,7 @@ const char *svm_check_parameter(const svm_problem *prob, const svm_parameter *pa
 	   kernel_type != POLY &&
 	   kernel_type != RBF &&
 	   kernel_type != SIGMOID &&
+	   kernel_type != GOWER &&
 	   kernel_type != PRECOMPUTED)
 		return "unknown kernel type";
 
