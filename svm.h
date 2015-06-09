@@ -3,6 +3,7 @@
 
 #define LIBSVM_VERSION 320
 
+#include <utility>
 #include "boost/variant.hpp"
 
 #ifdef __cplusplus
@@ -11,21 +12,38 @@ extern "C" {
 
 extern int libsvm_version;
 
+struct int_pair {
+    int first;
+    int second;
+};
+
+struct fuzzy {
+    double center;
+    double left;
+    double right;
+    double height;
+};
+
+typedef boost::variant<std::string, char, double, int, struct int_pair, struct fuzzy, uint32_t > Heterogeneous_Data;
+
 struct svm_node
 {
 	int index;
-	boost::variant< double, std::string > value;
+	Heterogeneous_Data value;
 };
 
 struct svm_problem  //TODO ajouter un tableau de taille ? rescensant les types pour chaque label
 {
-	int l;
-	double *y;
-	struct svm_node **x;
+	int l;			/* number of observation */
+	int* data_types;
+	double *y;		/* target */
+	struct svm_node **x;    /* data */
 };
 
-enum { C_SVC, NU_SVC, ONE_CLASS, EPSILON_SVR, NU_SVR };	/* svm_type */
-enum { LINEAR, POLY, RBF, SIGMOID, GOWER, PRECOMPUTED }; /* kernel_type */
+enum { C_SVC, NU_SVC, ONE_CLASS, EPSILON_SVR, NU_SVR };     /* svm_type */
+enum { LINEAR, POLY, RBF, SIGMOID, GOWER, PRECOMPUTED };    /* kernel_type */
+enum { NOM, DICH, QUANT, ORD, C_CIRC, D_CIRC, FUZZ, MULT }; /* data_types*/
+
 
 struct svm_parameter
 {
@@ -98,6 +116,8 @@ const char *svm_check_parameter(const struct svm_problem *prob, const struct svm
 int svm_check_probability_model(const struct svm_model *model);
 
 void svm_set_print_string_function(void (*print_func)(const char *));
+
+int Types_to_int(char * s);
 
 #ifdef __cplusplus
 }

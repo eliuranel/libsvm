@@ -2644,7 +2644,7 @@ static const char *svm_type_table[] =
 
 static const char *kernel_type_table[]=
 {
-	"linear","polynomial","rbf","sigmoid","precomputed","gower",NULL
+	"linear","polynomial","rbf","sigmoid","gower","precomputed",NULL
 };
 
 int svm_save_model(const char *model_file_name, const svm_model *model)
@@ -3172,3 +3172,16 @@ void svm_set_print_string_function(void (*print_func)(const char *))
 	else
 		svm_print_string = print_func;
 }
+
+int Types_to_int(char * s) {
+  if (strcmp(s,"nominal")==0) {return NOM; }
+  if (strcmp(s,"dichotomous")==0) {return DICH; }
+  if (strcmp(s,"quantitative")==0) {return QUANT; }
+  if (strcmp(s,"ordinal")==0) {return ORD; }
+  if (strcmp(s,"continuous-circular")==0) {return C_CIRC; }
+  if (strcmp(s,"discrete-circular")==0) {return D_CIRC; }
+  if (strcmp(s,"fuzzy")==0) {return FUZZ; }
+  if (strcmp(s,"multichoice")==0) {return MULT; }
+  return -1; 
+}
+
