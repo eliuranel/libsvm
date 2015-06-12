@@ -109,7 +109,7 @@ void predict(FILE *input, FILE *output)
 				inst_max_index = x[i].index;
 
 			errno = 0;
-			x[i].value = strtod(val,&endptr);  //TODO (svm node .value = string ?)
+			(x[i].value).quant = strtod(val,&endptr);  //TODO (svm node .value = string ?)
 			if(endptr == val || errno != 0 || (*endptr != '\0' && !isspace(*endptr)))
 				exit_input_error(total+1);
 

@@ -250,7 +250,7 @@ private:
 	}
 	double kernel_precomputed(int i, int j) const
 	{
-		return boost::get<double>(x[i][(int)(boost::get<double>(x[j][0].value))].value);
+		return (x[i][(int)((x[j][0].value).quant)].value).quant;
 	}
 };
 
@@ -305,7 +305,7 @@ double Kernel::dot(const svm_node *px, const svm_node *py)
 	{
 		if(px->index == py->index)
 		{
-			sum += boost::get<double>(px->value) * boost::get<double>(py->value);
+			sum += (px->value).quant * (py->value).quant;
 			++px;
 			++py;
 		}
@@ -336,7 +336,7 @@ double Kernel::k_function(const svm_node *x, const svm_node *y,
 			{
 				if(x->index == y->index)
 				{
-					double d = boost::get<double>(x->value) - boost::get<double>(y->value);
+					double d = (x->value).quant -(y->value).quant;
 					sum += d*d;
 					++x;
 					++y;
@@ -345,12 +345,12 @@ double Kernel::k_function(const svm_node *x, const svm_node *y,
 				{
 					if(x->index > y->index)
 					{	
-						sum += boost::get<double>(y->value) * boost::get<double>(y->value);
+						sum += (y->value).quant * (y->value).quant;
 						++y;
 					}
 					else
 					{
-						sum += boost::get<double>(x->value) * boost::get<double>(x->value);
+						sum += (x->value).quant * (x->value).quant;
 						++x;
 					}
 				}
@@ -358,13 +358,13 @@ double Kernel::k_function(const svm_node *x, const svm_node *y,
 
 			while(x->index != -1)
 			{
-				sum += boost::get<double>(x->value) * boost::get<double>(x->value);
+				sum += (x->value).quant * (x->value).quant;
 				++x;
 			}
 
 			while(y->index != -1)
 			{
-				sum += boost::get<double>(y->value) * boost::get<double>(y->value);
+				sum += (y->value).quant * (y->value).quant;
 				++y;
 			}
 			
@@ -375,7 +375,7 @@ double Kernel::k_function(const svm_node *x, const svm_node *y,
 		case GOWER:
 			return 0;  //TODO : a compléter
 		case PRECOMPUTED:  //x: test (validation), y: SV
-			return boost::get<double>(x[(int)(boost::get<double>(y->value))].value);
+			return (x[(int)((y->value).quant)].value).quant;
 		default:
 			return 0;  // Unreachable 
 	}
@@ -2724,11 +2724,11 @@ int svm_save_model(const char *model_file_name, const svm_model *model)
 		const svm_node *p = SV[i];
 
 		if(param.kernel_type == PRECOMPUTED)
-			fprintf(fp,"0:%d ",(int)(boost::get<double>(p->value)));
+			fprintf(fp,"0:%d ",(int)((p->value).quant));
 		else
 			while(p->index != -1)
 			{
-				fprintf(fp,"%d:%.8g ",p->index,boost::get<double>(p->value));
+				fprintf(fp,"%d:%.8g ",p->index,(p->value).quant);
 				p++;
 			}
 		fprintf(fp, "\n");
@@ -2966,7 +2966,7 @@ svm_model *svm_load_model(const char *model_file_name)
 			if(val == NULL)
 				break;
 			x_space[j].index = (int) strtol(idx,&endptr,10);
-			x_space[j].value = strtod(val,&endptr);
+			(x_space[j].value).quant = strtod(val,&endptr);
 
 			++j;
 		}
@@ -3174,14 +3174,14 @@ void svm_set_print_string_function(void (*print_func)(const char *))
 }
 
 int Types_to_int(char * s) {
-  if (strcmp(s,"nominal")==0) {return NOM; }
-  if (strcmp(s,"dichotomous")==0) {return DICH; }
   if (strcmp(s,"quantitative")==0) {return QUANT; }
+  if (strcmp(s,"dichotomous")==0) {return DICH; }
   if (strcmp(s,"ordinal")==0) {return ORD; }
   if (strcmp(s,"continuous-circular")==0) {return C_CIRC; }
   if (strcmp(s,"discrete-circular")==0) {return D_CIRC; }
   if (strcmp(s,"fuzzy")==0) {return FUZZ; }
   if (strcmp(s,"multichoice")==0) {return MULT; }
+  if (strcmp(s,"nominal")==0) {return NOM; }
   return -1; 
 }
 

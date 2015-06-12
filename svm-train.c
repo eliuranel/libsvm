@@ -86,17 +86,17 @@ int main(int argc, char **argv)
 {
 	char input_file_name[1024];
 	char model_file_name[1024];
-	const char *error_msg;
+//	const char *error_msg;
 
 	parse_command_line(argc, argv, input_file_name, model_file_name);
 	read_problem(input_file_name);
-	error_msg = svm_check_parameter(&prob,&param);
+/*	error_msg = svm_check_parameter(&prob,&param);
 
 	if(error_msg)
 	{
 		fprintf(stderr,"ERROR: %s\n",error_msg);
 		exit(1);
-	}
+	}*/
 
 	if(cross_validation)
 	{
@@ -113,6 +113,7 @@ int main(int argc, char **argv)
 		svm_free_and_destroy_model(&model);
 	}
 	svm_destroy_param(&param);
+	free(prob.data_types);
 	free(prob.y);
 	free(prob.x);
 	free(x_space);
@@ -275,7 +276,7 @@ void parse_command_line(int argc, char **argv, char *input_file_name, char *mode
 	}
 }
 
-// read in a problem (in svmlight format)
+// read in a problem (in (slightly modified) svmlight format)
 
 void read_problem(const char *filename)
 {
@@ -297,10 +298,11 @@ void read_problem(const char *filename)
 
 	max_line_len = 1024;
 	line = Malloc(char,max_line_len);
+
 	if(readline(fp)!=NULL)
 	{
 		char *pp = strtok(line," \t");
-		if(strcmp(pp,"TYPES"))
+		if(strcmp(pp,"TYPES")==0)
 		{
 			label = strtok(NULL," \t\n");
 			if(label == NULL)
@@ -308,11 +310,12 @@ void read_problem(const char *filename)
 			max_index = (int) strtol(label,&endptr,10);  //TODO qu'est-ce que le 10 ??
 			if(endptr == label || *endptr != '\0')
 				exit_input_error(1);
-			prob.data_types = Calloc(int, max_index);
+			prob.data_types = Calloc(int, max_index+1);
+			prob.data_types[0] = 1;
 			while(1)
 			{
 				idx = strtok(NULL,":");
-				val = strtok(NULL," \t");
+				val = strtok(NULL," \t\n");
 
 				if(val == NULL)
 					break;
@@ -324,10 +327,18 @@ void read_problem(const char *filename)
 				prob.data_types[i] = Types_to_int(val);
 			}
 		} else {
+			prob.data_types = Calloc(int,1);
 			rewind(fp);
 		}
-	}	
-	while(readline(fp)!=NULL)
+		
+		if(prob.data_types[0]){
+			for (i = 0; i<max_index+1; i++){
+				printf("%i : %i\n",i,prob.data_types[i]);
+			}
+		}
+	}
+	
+	while(readline(fp)!=NULL)  
 	{
 		char *p = strtok(line," \t"); // label
 
@@ -340,14 +351,15 @@ void read_problem(const char *filename)
 			++elements;
 		}
 		++elements;
-		++prob.l;
-	}
-	rewind(fp);
+		++prob.l; 
+	} 
+	rewind(fp); 
+	if(prob.data_types[0]){readline(fp);}
 
 	prob.y = Malloc(double,prob.l);
 	prob.x = Malloc(struct svm_node *,prob.l);
 	x_space = Malloc(struct svm_node,elements);
-
+	
 	max_index = 0;
 	j=0;
 	for(i=0;i<prob.l;i++)
@@ -372,101 +384,118 @@ void read_problem(const char *filename)
 
 			errno = 0;
 			x_space[j].index = (int) strtol(idx,&endptr,10);
+			if(endptr == idx) printf("coucou-1\n");
+			if(errno != 0) printf("coucou-2\n");
+			if(*endptr != '\0') printf("coucou-3\n");
+			if(x_space[j].index <= inst_max_index) printf("coucou-4\n");
 			if(endptr == idx || errno != 0 || *endptr != '\0' || x_space[j].index <= inst_max_index)
 				exit_input_error(i+1);
 			else
 				inst_max_index = x_space[j].index;
 
 			errno = 0;
-			switch(x_space[j].index)
-			{
-				case NOM:
-					val = strtok(NULL," \t");
-					if(val == NULL)
+			if(prob.data_types[0]) {
+				switch(prob.data_types[x_space[j].index]) //look at the type of the variable
+				{
+					case -1:
+						exit_input_error(1);
 						break;
-					x_space[j].value = std::string(val);
+					case QUANT:
+						val = strtok(NULL," \t\n");
+						if(val == NULL)
+							break;
+						(x_space[j].value).quant = strtod(val,&endptr);
+						if(endptr == val || errno != 0 || (*endptr != '\0' && !isspace(*endptr)))
+							exit_input_error(i+1);
+						break;
+					case DICH:
+						val = strtok(NULL," \t\n");
+						if(val == NULL)
+							break;
+						(x_space[j].value).dich = *val;
+	//					if(val+sizeof(char) != NULL)      //TODO vérifier que ça marche bien comme attendu 
+	//						exit_input_error(i+1);
+						break;
+					case ORD:
+						val = strtok(NULL," \t\n");
+						if(val == NULL)
+							break;
+						(x_space[j].value).ord = (int) strtol(idx,&endptr,10); //TODO qu'est-ce que le 10 ??
+						if(endptr == val || errno != 0 || (*endptr != '\0' && !isspace(*endptr)))
+							exit_input_error(i+1);
+						break;
+					case C_CIRC:
+						val = strtok(NULL," \t\n");
+						if(val == NULL)
+							break;
+						(x_space[j].value).c_circ = strtod(val,&endptr);
+						if(endptr == val || errno != 0 || (*endptr != '\0' && !isspace(*endptr)))
+							exit_input_error(i+1);
+						break;
+					case D_CIRC:
+						val = strtok(NULL,",");
+						if(val == NULL)
+							break;
+						int_val1 = (int)strtol(val,&endptr,10); //TODO qu'est-ce que le 10 ??
+						if(endptr == val || errno != 0 || (*endptr != '\0' && !isspace(*endptr)))
+							exit_input_error(i+1);
+						
+						val = strtok(NULL," \t\n");
+						if(val == NULL)
+							break;
+						int_val2 = (int)strtol(val,&endptr,10); //TODO qu'est-ce que le 10 ??
+						if(endptr == val || errno != 0 || (*endptr != '\0' && !isspace(*endptr)))
+							exit_input_error(i+1);
+						
+						(x_space[j].value).d_circ = (struct int_pair){.first = int_val1, .second = int_val2};
+						break;
+					case FUZZ:
+						val = strtok(NULL,",");
+						if(val == NULL)
+							break;
+						dbl_val1 = strtod(val,&endptr);
+						if(endptr == val || errno != 0 || (*endptr != '\0' && !isspace(*endptr)))
+							exit_input_error(i+1);
+						
+						val = strtok(NULL,",");
+						if(val == NULL)
+							break;
+						dbl_val2 = strtod(val,&endptr);
+						if(endptr == val || errno != 0 || (*endptr != '\0' && !isspace(*endptr)))
+							exit_input_error(i+1);
+						val = strtok(NULL,",");
+						if(val == NULL)
+							break;
+						dbl_val3 = strtod(val,&endptr);
+						if(endptr == val || errno != 0 || (*endptr != '\0' && !isspace(*endptr)))
+							exit_input_error(i+1);
+						
+						val = strtok(NULL," \t\n");
+						if(val == NULL)
+							break;
+						dbl_val4 = strtod(val,&endptr);
+						if(endptr == val || errno != 0 || (*endptr != '\0' && !isspace(*endptr)))
+							exit_input_error(i+1);
+						
+						(x_space[j].value).fuzz = (struct fuzzy) {.center = dbl_val1, .left = dbl_val2, .right = dbl_val3, .height = dbl_val4};
+						break;
+					case MULT:  //TODO à compléter
+						(x_space[j].value).mult = (uint32_t) 0;
+						break;
+					case NOM:
+						val = strtok(NULL," \t\n");
+						if(val == NULL)
+							break;
+						(x_space[j].value).nom = val;
+						break;
+				}
+			} else {
+				val = strtok(NULL," \t\n");
+				if(val == NULL)
 					break;
-				case DICH:
-					val = strtok(NULL," \t");
-					if(val == NULL)
-						break;
-					x_space[j].value = (char)*val;
-					if(val+sizeof(char) != NULL)           //TODO vérifier que ça marche bien comme attendu 
-						exit_input_error(i+1);
-					break;
-				case QUANT:
-					val = strtok(NULL," \t");
-					if(val == NULL)
-						break;
-					x_space[j].value = strtod(val,&endptr);
-					if(endptr == val || errno != 0 || (*endptr != '\0' && !isspace(*endptr)))
-						exit_input_error(i+1);
-					break;
-				case ORD:
-					val = strtok(NULL," \t");
-					if(val == NULL)
-						break;
-					x_space[j].value = (int) strtol(idx,&endptr,10); //TODO qu'est-ce que le 10 ??
-					if(endptr == val || errno != 0 || (*endptr != '\0' && !isspace(*endptr)))
-						exit_input_error(i+1);
-					break;
-				case C_CIRC:
-					val = strtok(NULL," \t");
-					if(val == NULL)
-						break;
-					x_space[j].value = strtod(val,&endptr);
-					if(endptr == val || errno != 0 || (*endptr != '\0' && !isspace(*endptr)))
-						exit_input_error(i+1);
-					break;
-				case D_CIRC:
-					val = strtok(NULL,",");
-					if(val == NULL)
-						break;
-					int_val1 = (int)strtol(val,&endptr,10); //TODO qu'est-ce que le 10 ??
-					if(endptr == val || errno != 0 || (*endptr != '\0' && !isspace(*endptr)))
-						exit_input_error(i+1);
-					
-					val = strtok(NULL,",");
-					if(val == NULL)
-						break;
-					int_val2 = (int)strtol(val,&endptr,10); //TODO qu'est-ce que le 10 ??
-					if(endptr == val || errno != 0 || (*endptr != '\0' && !isspace(*endptr)))
-						exit_input_error(i+1);
-					
-					x_space[j].value = (struct int_pair){.first = int_val1, .second = int_val2};
-					break;
-				case FUZZ:
-					val = strtok(NULL,",");
-					if(val == NULL)
-						break;
-					dbl_val1 = strtod(val,&endptr);
-					if(endptr == val || errno != 0 || (*endptr != '\0' && !isspace(*endptr)))
-						exit_input_error(i+1);
-					
-					val = strtok(NULL,",");
-					if(val == NULL)
-						break;
-					dbl_val2 = strtod(val,&endptr);
-					if(endptr == val || errno != 0 || (*endptr != '\0' && !isspace(*endptr)))
-						exit_input_error(i+1);
-					val = strtok(NULL,",");
-					if(val == NULL)
-						break;
-					dbl_val3 = strtod(val,&endptr);
-					if(endptr == val || errno != 0 || (*endptr != '\0' && !isspace(*endptr)))
-						exit_input_error(i+1);
-					
-					val = strtok(NULL," \t");
-					if(val == NULL)
-						break;
-					dbl_val4 = strtod(val,&endptr);
-					if(endptr == val || errno != 0 || (*endptr != '\0' && !isspace(*endptr)))
-						exit_input_error(i+1);
-					
-					x_space[j].value = (struct fuzzy) {.center = dbl_val1, .left = dbl_val2, .right = dbl_val3, .height = dbl_val4};
-					break;
-				case MULT:  //TODO à compléter
-					break;
+				(x_space[j].value).quant = strtod(val,&endptr);
+				if(endptr == val || errno != 0 || (*endptr != '\0' && !isspace(*endptr)))
+					exit_input_error(i+1);
 			}
 			++j;
 		}
@@ -487,12 +516,11 @@ void read_problem(const char *filename)
 				fprintf(stderr,"Wrong input format: first column must be 0:sample_serial_number\n");
 				exit(1);
 			}
-			if ((int)boost::get<double>(prob.x[i][0].value) <= 0 || (int)boost::get<double>(prob.x[i][0].value) > max_index) //TODO (svm node .value = string ?)
+			if ((int)(prob.x[i][0].value).quant <= 0 || (int)(prob.x[i][0].value).quant > max_index) //TODO (svm node .value = string ?)
 			{
 				fprintf(stderr,"Wrong input format: sample_serial_number out of range\n");
 				exit(1);
 			}
 		}
-
 	fclose(fp);
 }

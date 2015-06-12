@@ -3,7 +3,6 @@
 
 #define LIBSVM_VERSION 320
 
-#include <utility>
 #include "boost/variant.hpp"
 
 #ifdef __cplusplus
@@ -24,8 +23,17 @@ struct fuzzy {
     double height;
 };
 
-typedef boost::variant<std::string, char, double, int, struct int_pair, struct fuzzy, uint32_t > Heterogeneous_Data;
-
+union Heterogeneous_Data {
+    double quant;
+    char dich;
+    int ord;
+    double c_circ;
+    struct int_pair d_circ; 
+    struct fuzzy fuzz; 
+    uint32_t mult; 
+    char* nom;
+};
+    
 struct svm_node
 {
 	int index;
@@ -35,14 +43,14 @@ struct svm_node
 struct svm_problem  //TODO ajouter un tableau de taille ? rescensant les types pour chaque label
 {
 	int l;			/* number of observation */
-	int* data_types;
+	int* data_types;	// data_types[0] indicate if the line TYPE is here or not, if yes size = max_index+1, if no size = 1 
 	double *y;		/* target */
 	struct svm_node **x;    /* data */
 };
 
 enum { C_SVC, NU_SVC, ONE_CLASS, EPSILON_SVR, NU_SVR };     /* svm_type */
 enum { LINEAR, POLY, RBF, SIGMOID, GOWER, PRECOMPUTED };    /* kernel_type */
-enum { NOM, DICH, QUANT, ORD, C_CIRC, D_CIRC, FUZZ, MULT }; /* data_types*/
+enum { QUANT, DICH, ORD, C_CIRC, D_CIRC, FUZZ, MULT, NOM }; /* data_types*/
 
 
 struct svm_parameter
