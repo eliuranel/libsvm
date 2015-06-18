@@ -201,10 +201,11 @@ public:
 
 class Kernel: public QMatrix {
 public:
-	Kernel(int l, svm_node * const * x, const svm_parameter& param);
+	Kernel(int l, int max_index, int* data_types, svm_node * const * x, const svm_parameter& param);
 	virtual ~Kernel();
 
-	static double k_function(const svm_node *x, const svm_node *y,
+	static double k_function(int* data_types,
+				 const svm_node *x, const svm_node *y,
 				 const svm_parameter& param);
 	virtual Qfloat *get_Q(int column, int len) const = 0;
 	virtual double *get_QD() const = 0;
@@ -220,6 +221,7 @@ protected:
 private:
 	const svm_node **x;
 	double *x_square;
+	int* data_types;
 
 	// svm_parameter
 	const int kernel_type;
@@ -254,7 +256,7 @@ private:
 	}
 };
 
-Kernel::Kernel(int l, svm_node * const * x_, const svm_parameter& param)
+Kernel::Kernel(int l, int max_index, int* data_types_, svm_node * const * x_, const svm_parameter& param)
 :kernel_type(param.kernel_type), degree(param.degree),
  gamma(param.gamma), coef0(param.coef0)
 {
@@ -281,6 +283,7 @@ Kernel::Kernel(int l, svm_node * const * x_, const svm_parameter& param)
 	}
 
 	clone(x,x_,l);
+	clone(data_types,data_types_,max_index);
 
 	if(kernel_type == RBF)
 	{
@@ -294,6 +297,7 @@ Kernel::Kernel(int l, svm_node * const * x_, const svm_parameter& param)
 
 Kernel::~Kernel()
 {
+	delete[] data_types;
 	delete[] x;
 	delete[] x_square;
 }
@@ -320,7 +324,8 @@ double Kernel::dot(const svm_node *px, const svm_node *py)
 	return sum;
 }
 
-double Kernel::k_function(const svm_node *x, const svm_node *y,
+double Kernel::k_function(int* data_types, 
+			  const svm_node *x, const svm_node *y,
 			  const svm_parameter& param)
 {
 	switch(param.kernel_type)
@@ -1276,7 +1281,7 @@ class SVC_Q: public Kernel
 { 
 public:
 	SVC_Q(const svm_problem& prob, const svm_parameter& param, const schar *y_)
-	:Kernel(prob.l, prob.x, param)
+	:Kernel(prob.l, prob.max_index, prob.data_types, prob.x, param)
 	{
 		clone(y,y_,prob.l);
 		cache = new Cache(prob.l,(long int)(param.cache_size*(1<<20)));
@@ -1326,7 +1331,7 @@ class ONE_CLASS_Q: public Kernel
 {
 public:
 	ONE_CLASS_Q(const svm_problem& prob, const svm_parameter& param)
-	:Kernel(prob.l, prob.x, param)
+	:Kernel(prob.l, prob.max_index, prob.data_types, prob.x, param)
 	{
 		cache = new Cache(prob.l,(long int)(param.cache_size*(1<<20)));
 		QD = new double[prob.l];
@@ -1372,7 +1377,7 @@ class SVR_Q: public Kernel
 { 
 public:
 	SVR_Q(const svm_problem& prob, const svm_parameter& param)
-	:Kernel(prob.l, prob.x, param)
+	:Kernel(prob.l, prob.max_index, prob.data_types, prob.x, param)
 	{
 		l = prob.l;
 		cache = new Cache(l,(long int)(param.cache_size*(1<<20)));
@@ -2102,6 +2107,7 @@ svm_model *svm_train(const svm_problem *prob, const svm_parameter *param)
 {
 	svm_model *model = Malloc(svm_model,1);
 	model->param = *param;
+	clone(model->data_types,prob->data_types,prob->max_index);
 	model->free_sv = 0;	// XXX
 
 	if(param->svm_type == ONE_CLASS ||
@@ -2517,7 +2523,7 @@ double svm_predict_values(const svm_model *model, const svm_node *x, double* dec
 		double *sv_coef = model->sv_coef[0];
 		double sum = 0;
 		for(i=0;i<model->l;i++)
-			sum += sv_coef[i] * Kernel::k_function(x,model->SV[i],model->param);
+			sum += sv_coef[i] * Kernel::k_function(model->data_types,x,model->SV[i],model->param);
 		sum -= model->rho[0];
 		*dec_values = sum;
 
@@ -2533,7 +2539,7 @@ double svm_predict_values(const svm_model *model, const svm_node *x, double* dec
 		
 		double *kvalue = Malloc(double,l);
 		for(i=0;i<l;i++)
-			kvalue[i] = Kernel::k_function(x,model->SV[i],model->param);
+			kvalue[i] = Kernel::k_function(model->data_types,x,model->SV[i],model->param);
 
 		int *start = Malloc(int,nr_class);
 		start[0] = 0;

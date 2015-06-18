@@ -43,6 +43,7 @@ struct svm_node
 struct svm_problem  //TODO ajouter un tableau de taille ? rescensant les types pour chaque label
 {
 	int l;			/* number of observation */
+	int max_index;		/* number of variables */
 	int* data_types;	// data_types[0] indicate if the line TYPE is here or not, if yes size = max_index+1, if no size = 1 
 	double *y;		/* target */
 	struct svm_node **x;    /* data */
@@ -82,6 +83,7 @@ struct svm_model
 	struct svm_parameter param;	/* parameter */
 	int nr_class;		/* number of classes, = 2 in regression/one class svm */
 	int l;			/* total #SV */
+	int* data_types;
 	struct svm_node **SV;		/* SVs (SV[l]) */
 	double **sv_coef;	/* coefficients for SVs in decision functions (sv_coef[k-1][l]) */
 	double *rho;		/* constants in decision functions (rho[k*(k-1)/2]) */

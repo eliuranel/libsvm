@@ -310,7 +310,8 @@ void read_problem(const char *filename)
 			max_index = (int) strtol(label,&endptr,10);  //TODO qu'est-ce que le 10 ??
 			if(endptr == label || *endptr != '\0')
 				exit_input_error(1);
-			prob.data_types = Calloc(int, max_index+1);
+			prob.max_index = max_index;
+			prob.data_types = Calloc(int, prob.max_index+1);
 			prob.data_types[0] = 1;
 /*			while(1)
 			{
@@ -364,7 +365,7 @@ void read_problem(const char *filename)
 	}
 	
 	if(prob.data_types[0] != 0){
-		for (i = 0; i<max_index+1; i++){
+		for (i = 0; i<prob.max_index+1; i++){
 			printf("%i : %i\n",i,prob.data_types[i]);
 		}
 	}
@@ -538,9 +539,11 @@ void read_problem(const char *filename)
 			max_index = inst_max_index;
 		x_space[j++].index = -1;
 	}
+	if (prob.data_types[0] != 0)
+		prob.max_index = max_index;
 
-	if(param.gamma == 0 && max_index > 0)
-		param.gamma = 1.0/max_index;
+	if(param.gamma == 0 && prob.max_index > 0)
+		param.gamma = 1.0/prob.max_index;
 
 	if(param.kernel_type == PRECOMPUTED)
 		for(i=0;i<prob.l;i++)
@@ -550,7 +553,7 @@ void read_problem(const char *filename)
 				fprintf(stderr,"Wrong input format: first column must be 0:sample_serial_number\n");
 				exit(1);
 			}
-			if ((int)(prob.x[i][0].value).quant <= 0 || (int)(prob.x[i][0].value).quant > max_index) //TODO (svm node .value = string ?)
+			if ((int)(prob.x[i][0].value).quant <= 0 || (int)(prob.x[i][0].value).quant > prob.max_index) //TODO (svm node .value = string ?)
 			{
 				fprintf(stderr,"Wrong input format: sample_serial_number out of range\n");
 				exit(1);
