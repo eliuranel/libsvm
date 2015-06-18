@@ -280,12 +280,12 @@ void parse_command_line(int argc, char **argv, char *input_file_name, char *mode
 
 void read_problem(const char *filename)
 {
-	int max_index, inst_max_index, i, int_val1, int_val2;
+	int max_index, inst_max_index, i, int_val1, int_val2, i_min, i_max, num_line;
 	double dbl_val1, dbl_val2, dbl_val3, dbl_val4;
 	size_t elements, j;
 	FILE *fp = fopen(filename,"r");
 	char *endptr;
-	char *idx, *val, *label;
+	char *idx, *val, *label, *idx_min, *idx_max;
 
 	if(fp == NULL)
 	{
@@ -312,7 +312,7 @@ void read_problem(const char *filename)
 				exit_input_error(1);
 			prob.data_types = Calloc(int, max_index+1);
 			prob.data_types[0] = 1;
-			while(1)
+/*			while(1)
 			{
 				idx = strtok(NULL,":");
 				val = strtok(NULL," \t\n");
@@ -326,18 +326,49 @@ void read_problem(const char *filename)
 					exit_input_error(i+1);
 				prob.data_types[i] = Types_to_int(val);
 			}
-		} else {
+*/		} else {
 			prob.data_types = Calloc(int,1);
 			rewind(fp);
 		}
-		
-		if(prob.data_types[0]){
-			for (i = 0; i<max_index+1; i++){
-				printf("%i : %i\n",i,prob.data_types[i]);
+	}
+	
+	num_line = 1;
+	while(readline(fp)!=NULL)
+	{
+		num_line++;
+		char *pp = strtok(line," \t");
+		if(strcmp(pp,"TYPES")==0)
+		{
+			prob.data_types[0]++;
+			label = strtok(NULL," \t\n");
+			while(1){
+				idx_min = strtok(NULL,">");
+				if(idx_min == NULL)
+					break;
+				idx_max = strtok(NULL,", \t\n");
+				if(idx_max == NULL)
+					break;
+				errno = 0;
+				i_min = (int) strtol(idx_min,&endptr,10);  //TODO qu'est-ce que le 10 ??
+				if(endptr == idx_min || errno != 0 || *endptr != '\0')
+					exit_input_error(num_line+1);
+				i_max = (int) strtol(idx_max,&endptr,10);  //TODO qu'est-ce que le 10 ??
+				if(endptr == idx_max || errno != 0 || *endptr != '\0')
+					exit_input_error(num_line+1);
+				for (i = i_min; i <= i_max; i++)
+				{
+					prob.data_types[i] = Types_to_int(label);
+				}
 			}
 		}
 	}
 	
+	if(prob.data_types[0] != 0){
+		for (i = 0; i<max_index+1; i++){
+			printf("%i : %i\n",i,prob.data_types[i]);
+		}
+	}
+	  
 	while(readline(fp)!=NULL)  
 	{
 		char *p = strtok(line," \t"); // label
@@ -354,7 +385,10 @@ void read_problem(const char *filename)
 		++prob.l; 
 	} 
 	rewind(fp); 
-	if(prob.data_types[0]){readline(fp);}
+	for (i = 0; i < prob.data_types[0]; i++)
+	{
+		readline(fp);
+	}
 
 	prob.y = Malloc(double,prob.l);
 	prob.x = Malloc(struct svm_node *,prob.l);
@@ -394,7 +428,7 @@ void read_problem(const char *filename)
 				inst_max_index = x_space[j].index;
 
 			errno = 0;
-			if(prob.data_types[0]) {
+			if(prob.data_types[0] != 0) {
 				switch(prob.data_types[x_space[j].index]) //look at the type of the variable
 				{
 					case -1:
