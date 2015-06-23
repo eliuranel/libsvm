@@ -465,7 +465,7 @@ void read_problem(const char *filename)
 						val = strtok(NULL," \t\n");
 						if(val == NULL)
 							break;
-						(x_space[j].value).ord = (int) strtol(idx,&endptr,10); //TODO qu'est-ce que le 10 ??
+						(x_space[j].value).ord = strtod(val,&endptr);
 						if(endptr == val || errno != 0 || (*endptr != '\0' && !isspace(*endptr)))
 							exit_input_error(i+1);
 						break;

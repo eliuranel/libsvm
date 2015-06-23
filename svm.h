@@ -26,7 +26,7 @@ struct fuzzy {
 union Heterogeneous_Data {
     double quant;
     char dich;
-    int ord;
+    double ord;
     double c_circ;
     struct int_pair d_circ; 
     struct fuzzy fuzz; 

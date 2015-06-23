@@ -7,6 +7,7 @@
 #include <stdarg.h>
 #include <limits.h>
 #include <locale.h>
+#include <math.h>  //fabs, cos
 #include "svm.h"
 int libsvm_version = LIBSVM_VERSION;
 typedef float Qfloat;
@@ -250,7 +251,7 @@ private:
 	}
 	double kernel_gower(int i, int j) const
 	{
-		return gower(data_types,x[i],x[j]);	//TODO
+		return gower(data_types,x[i],x[j]);
 	}
 	double kernel_precomputed(int i, int j) const
 	{
@@ -304,35 +305,43 @@ Kernel::~Kernel()
 	delete[] x_square;
 }
 
-/*
 double Kernel::heterogeneouscoeff (int* pdata_types, svm_node px, svm_node py)
 {
-	return (px.value).quant * (py.value).quant;
-}*/
-
-double Kernel::heterogeneouscoeff (int* pdata_types, svm_node px, svm_node py)
-{
+	//TODO : error when pdata_types[px.index] != pdata_types[py.index]
 	switch(pdata_types[px.index])
 	{
 		case -1:
 			//TODO : exit error
 			return 0;
 		case QUANT:
-			return 0;
+			return 1 - fabs((px.value).quant - (py.value).quant);
 		case DICH:
+			if ((px.value).dich == '+' && (py.value).dich == '+')
+				return 1;
+			if ((px.value).dich == '-' && (py.value).dich == '-')
+				return -1;
 			return 0;
 		case ORD:
-			return 0;
+			return 1 - fabs((px.value).ord - (py.value).ord);
 		case C_CIRC:
-			return 0;
+			return cos((px.value).c_circ-(py.value).c_circ); //TODO : tester que cos se comporte bien
 		case D_CIRC:
+			//TODO : error when ((px.value).d_circ).second != ((py.value).d_circ).second
+			if (((px.value).d_circ).second %2){
+				return 2.0/(double)(((px.value).d_circ).second) * fabs(fabs((double)(((px.value).d_circ).first) - (double)(((py.value).d_circ).first)) - (double)(((px.value).d_circ).second)/2.0) ;
+			} else {
+				return 2.0/(double)(((px.value).d_circ).second - 1) * (fabs(fabs((double)(((px.value).d_circ).first) - (double)(((py.value).d_circ).first)) - (double)(((px.value).d_circ).second)/2.0) - 0.5);
+			}
+		case FUZZ: //TODO : à compléter
 			return 0;
-		case FUZZ:
-			return 0;
-		case MULT:
+		case MULT: //TODO : à compléter
 			return 0;
 		case NOM:
-			return 0;
+			if(strcmp((px.value).nom,(py.value).nom)==0){
+				return 1;
+			} else {
+				return 0;
+			}
 	}
 	return 0;
 }
@@ -344,7 +353,8 @@ double Kernel::gower (int* pdata_types, const svm_node *px, const svm_node *py)
 	{
 		if(px->index == py->index)
 		{
-			sum += heterogeneouscoeff(pdata_types, *px, *py); //TODO : OK ???
+			if (heterogeneouscoeff(pdata_types, *px, *py) != -1)
+				sum += heterogeneouscoeff(pdata_types, *px, *py); //TODO : OK ???
 			px++;
 			py++;
 		}
@@ -2817,7 +2827,7 @@ int svm_save_model(const char *model_file_name, const svm_model *model)
 						fprintf(fp,"%d:%c ",p->index,(p->value).dich);
 						break;
 					case ORD:
-						fprintf(fp,"%d:%i ",p->index,(p->value).ord);
+						fprintf(fp,"%d:%.8g ",p->index,(p->value).ord);
 						break;
 					case C_CIRC:
 						fprintf(fp,"%d:%.8g ",p->index,(p->value).c_circ);
