@@ -230,6 +230,8 @@ private:
 	const double coef0;
 
 	static double dot(const svm_node *px, const svm_node *py);
+	static double heterogeneouscoeff (int* pdata_types, svm_node px, svm_node py);
+	static double gower (int* pdata_types, const svm_node *px, const svm_node *py);
 	double kernel_linear(int i, int j) const
 	{
 		return dot(x[i],x[j]);
@@ -248,7 +250,7 @@ private:
 	}
 	double kernel_gower(int i, int j) const
 	{
-		return 0;	//TODO
+		return gower(data_types,x[i],x[j]);	//TODO
 	}
 	double kernel_precomputed(int i, int j) const
 	{
@@ -283,7 +285,7 @@ Kernel::Kernel(int l, int max_index, int* data_types_, svm_node * const * x_, co
 	}
 
 	clone(x,x_,l);
-	clone(data_types,data_types_,max_index);
+	clone(data_types,data_types_,max_index+1);
 
 	if(kernel_type == RBF)
 	{
@@ -302,6 +304,61 @@ Kernel::~Kernel()
 	delete[] x_square;
 }
 
+/*
+double Kernel::heterogeneouscoeff (int* pdata_types, svm_node px, svm_node py)
+{
+	return (px.value).quant * (py.value).quant;
+}*/
+
+double Kernel::heterogeneouscoeff (int* pdata_types, svm_node px, svm_node py)
+{
+	switch(pdata_types[px.index])
+	{
+		case -1:
+			//TODO : exit error
+			return 0;
+		case QUANT:
+			return 0;
+		case DICH:
+			return 0;
+		case ORD:
+			return 0;
+		case C_CIRC:
+			return 0;
+		case D_CIRC:
+			return 0;
+		case FUZZ:
+			return 0;
+		case MULT:
+			return 0;
+		case NOM:
+			return 0;
+	}
+	return 0;
+}
+
+double Kernel::gower (int* pdata_types, const svm_node *px, const svm_node *py)
+{
+	double sum = 0;
+	while(px->index != -1 && py->index != -1)
+	{
+		if(px->index == py->index)
+		{
+			sum += heterogeneouscoeff(pdata_types, *px, *py); //TODO : OK ???
+			px++;
+			py++;
+		}
+		else
+		{
+			if(px->index > py->index)
+				py++;
+			else
+				px++;
+		}			
+	}
+	return sum;
+}
+
 double Kernel::dot(const svm_node *px, const svm_node *py)
 {
 	double sum = 0;
@@ -310,19 +367,20 @@ double Kernel::dot(const svm_node *px, const svm_node *py)
 		if(px->index == py->index)
 		{
 			sum += (px->value).quant * (py->value).quant;
-			++px;
-			++py;
+			px++;
+			py++;
 		}
 		else
 		{
 			if(px->index > py->index)
-				++py;
+				py++;
 			else
-				++px;
+				px++;
 		}			
 	}
 	return sum;
 }
+
 
 double Kernel::k_function(int* data_types, 
 			  const svm_node *x, const svm_node *y,
@@ -378,7 +436,7 @@ double Kernel::k_function(int* data_types,
 		case SIGMOID:
 			return tanh(param.gamma*dot(x,y)+param.coef0);
 		case GOWER:
-			return 0;  //TODO : a compléter
+			return gower(data_types,x,y);  //TODO : a compléter
 		case PRECOMPUTED:  //x: test (validation), y: SV
 			return (x[(int)((y->value).quant)].value).quant;
 		default:
@@ -1984,6 +2042,7 @@ static void svm_binary_svc_probability(
 		}
 		free(subprob.x);
 		free(subprob.y);
+		free(subprob.data_types);
 	}		
 	sigmoid_train(prob->l,dec_values,prob->y,probA,probB);
 	free(dec_values);
@@ -2034,7 +2093,7 @@ static void svm_group_classes(const svm_problem *prob, int *nr_class_ret, int **
 	int *count = Malloc(int,max_nr_class);
 	int *data_label = Malloc(int,l);
 	int i;
-
+	
 	for(i=0;i<l;i++)
 	{
 		int this_label = (int)prob->y[i];
@@ -2105,9 +2164,15 @@ static void svm_group_classes(const svm_problem *prob, int *nr_class_ret, int **
 //
 svm_model *svm_train(const svm_problem *prob, const svm_parameter *param)
 {
+	int k;
 	svm_model *model = Malloc(svm_model,1);
 	model->param = *param;
-	clone(model->data_types,prob->data_types,prob->max_index);
+	model->max_index = prob->max_index;
+	model->data_types = Malloc(int,model->max_index+1);
+	for (k=0;k<model->max_index+1;k++)
+	{
+		model->data_types[k] = prob->data_types[k];
+	}
 	model->free_sv = 0;	// XXX
 
 	if(param->svm_type == ONE_CLASS ||
@@ -2164,6 +2229,7 @@ svm_model *svm_train(const svm_problem *prob, const svm_parameter *param)
 		int *perm = Malloc(int,l);
 
 		// group training data of the same class
+	
 		svm_group_classes(prob,&nr_class,&label,&start,&count,perm);
 		if(nr_class == 1) 
 			info("WARNING: training data in only one class. See README for details.\n");
@@ -2214,6 +2280,8 @@ svm_model *svm_train(const svm_problem *prob, const svm_parameter *param)
 				sub_prob.l = ci+cj;
 				sub_prob.x = Malloc(svm_node *,sub_prob.l);
 				sub_prob.y = Malloc(double,sub_prob.l);
+				sub_prob.max_index = prob->max_index;
+				sub_prob.data_types = Malloc(int, sub_prob.max_index+1);
 				int k;
 				for(k=0;k<ci;k++)
 				{
@@ -2224,6 +2292,10 @@ svm_model *svm_train(const svm_problem *prob, const svm_parameter *param)
 				{
 					sub_prob.x[ci+k] = x[sj+k];
 					sub_prob.y[ci+k] = -1;
+				}
+				for (k=0;k<sub_prob.max_index+1;k++)
+				{
+					sub_prob.data_types[k] = prob->data_types[k];
 				}
 
 				if(param->probability)
@@ -2238,6 +2310,7 @@ svm_model *svm_train(const svm_problem *prob, const svm_parameter *param)
 						nonzero[sj+k] = true;
 				free(sub_prob.x);
 				free(sub_prob.y);
+				free(sub_prob.data_types);
 				++p;
 			}
 
@@ -2466,6 +2539,7 @@ void svm_cross_validation(const svm_problem *prob, const svm_parameter *param, i
 		svm_free_and_destroy_model(&submodel);
 		free(subprob.x);
 		free(subprob.y);
+		free(subprob.data_types);
 	}		
 	free(fold_start);
 	free(perm);
@@ -2734,7 +2808,33 @@ int svm_save_model(const char *model_file_name, const svm_model *model)
 		else
 			while(p->index != -1)
 			{
-				fprintf(fp,"%d:%.8g ",p->index,(p->value).quant);
+				switch(model->data_types[p->index])
+				{
+					case QUANT:
+						fprintf(fp,"%d:%.8g ",p->index,(p->value).quant);
+						break;
+					case DICH:
+						fprintf(fp,"%d:%c ",p->index,(p->value).dich);
+						break;
+					case ORD:
+						fprintf(fp,"%d:%i ",p->index,(p->value).ord);
+						break;
+					case C_CIRC:
+						fprintf(fp,"%d:%.8g ",p->index,(p->value).c_circ);
+						break;
+					case D_CIRC:
+						fprintf(fp,"%d:%i,%i ",p->index,((p->value).d_circ).first,((p->value).d_circ).second);
+						break;
+					case FUZZ:
+						fprintf(fp,"%d:%.8g,%.8g,%.8g,%.8g ",p->index,((p->value).fuzz).center,((p->value).fuzz).left,((p->value).fuzz).right,((p->value).fuzz).height);
+						break;
+					case MULT:
+						fprintf(fp,"%d:%u ",p->index,(p->value).mult);
+						break;
+					case NOM:
+						fprintf(fp,"%d:%s ",p->index,(p->value).nom);
+						break;
+				}
 				p++;
 			}
 		fprintf(fp, "\n");
@@ -2912,6 +3012,7 @@ svm_model *svm_load_model(const char *model_file_name)
 		free(model->rho);
 		free(model->label);
 		free(model->nSV);
+		free(model->data_types);
 		free(model);
 		return NULL;
 	}
@@ -3023,6 +3124,9 @@ void svm_free_model_content(svm_model* model_ptr)
 
 	free(model_ptr->nSV);
 	model_ptr->nSV = NULL;
+	
+	free(model_ptr->data_types);
+	model_ptr->data_types = NULL;
 }
 
 void svm_free_and_destroy_model(svm_model** model_ptr_ptr)

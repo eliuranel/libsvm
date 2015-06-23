@@ -87,7 +87,7 @@ int main(int argc, char **argv)
 	char input_file_name[1024];
 	char model_file_name[1024];
 //	const char *error_msg;
-
+	
 	parse_command_line(argc, argv, input_file_name, model_file_name);
 	read_problem(input_file_name);
 /*	error_msg = svm_check_parameter(&prob,&param);
@@ -364,6 +364,12 @@ void read_problem(const char *filename)
 		}
 	}
 	
+	rewind(fp); 
+	for (i = 0; i < prob.data_types[0]; i++)
+	{
+		readline(fp);
+	}
+	
 	if(prob.data_types[0] != 0){
 		for (i = 0; i<prob.max_index+1; i++){
 			printf("%i : %i\n",i,prob.data_types[i]);
@@ -419,12 +425,16 @@ void read_problem(const char *filename)
 
 			errno = 0;
 			x_space[j].index = (int) strtol(idx,&endptr,10);
-			if(endptr == idx) printf("coucou-1\n");
-			if(errno != 0) printf("coucou-2\n");
-			if(*endptr != '\0') printf("coucou-3\n");
-			if(x_space[j].index <= inst_max_index) printf("coucou-4\n");
+//			if(endptr == idx) printf("coucou-1\n");
+//			if(errno != 0) printf("coucou-2\n");
+//			if(*endptr != '\0') printf("coucou-3\n");
+//			if(x_space[j].index <= inst_max_index) printf("coucou-4\n");
 			if(endptr == idx || errno != 0 || *endptr != '\0' || x_space[j].index <= inst_max_index)
-				exit_input_error(i+1);
+			{
+				val = strtok(NULL," \t\n");
+				if(val == NULL){break;}
+				else{exit_input_error(i+1);}
+			}
 			else
 				inst_max_index = x_space[j].index;
 
@@ -539,9 +549,13 @@ void read_problem(const char *filename)
 			max_index = inst_max_index;
 		x_space[j++].index = -1;
 	}
-	if (prob.data_types[0] != 0)
+	if (prob.data_types[0] == 0)
+	{
 		prob.max_index = max_index;
-
+		free(prob.data_types);
+		prob.data_types = Calloc(int,prob.max_index+1);
+	}
+	
 	if(param.gamma == 0 && prob.max_index > 0)
 		param.gamma = 1.0/prob.max_index;
 
@@ -553,7 +567,7 @@ void read_problem(const char *filename)
 				fprintf(stderr,"Wrong input format: first column must be 0:sample_serial_number\n");
 				exit(1);
 			}
-			if ((int)(prob.x[i][0].value).quant <= 0 || (int)(prob.x[i][0].value).quant > prob.max_index) //TODO (svm node .value = string ?)
+			if ((int)(prob.x[i][0].value).quant <= 0 || (int)(prob.x[i][0].value).quant > prob.max_index)
 			{
 				fprintf(stderr,"Wrong input format: sample_serial_number out of range\n");
 				exit(1);
