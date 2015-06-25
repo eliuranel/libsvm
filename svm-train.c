@@ -4,6 +4,7 @@
 #include <ctype.h>
 #include <errno.h>
 #include "svm.h"
+
 #define Malloc(type,n) (type *)malloc((n)*sizeof(type))
 #define Calloc(type,n) (type *)calloc(n,sizeof(type)) //same as malloc but set allocated memory to 0
 
@@ -304,6 +305,7 @@ void read_problem(const char *filename)
 		char *pp = strtok(line," \t");
 		if(strcmp(pp,"TYPES")==0)
 		{
+			//TODO : if param.kernel_type != GOWER -> exit with error message "kernel type has to be Gower" (or warning)
 			label = strtok(NULL," \t\n");
 			if(label == NULL)
 				exit_input_error(1);
