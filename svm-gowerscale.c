@@ -5,6 +5,7 @@
 #include <errno.h>
 #include <string.h>
 #include <math.h> //fabs
+#include <limits.h> //INT_MAX
 #include "svm.h"
 
 #define Malloc(type,n) (type *)malloc((n)*sizeof(type))
@@ -36,7 +37,7 @@ void exit_with_help()
 	"Usage: svm-scale [options] data_filename\n"
 	"options:\n"
 	"-y y_lower y_upper : y scaling limits (default: no y scaling)\n"
-	"-n : normalize quantitative variables with standardization (default: no standardization)\n"
+	"-n : wether to normalize quantitative variables with standardization (default: no standardization)\n"
 	"-s save_filename : save scaling parameters to save_filename\n"
 	"-r restore_filename : restore scaling parameters from restore_filename\n"
 	);
@@ -58,8 +59,7 @@ double *feature_max;
 double *feature_min;
 double y_max = -DBL_MAX;
 double y_min = DBL_MAX;
-int max_index;
-int min_index;
+int max_index, min_index, l;
 long int num_nonzeros = 0;
 long int new_num_nonzeros = 0;
 int *data_types;
@@ -89,7 +89,7 @@ int main(int argc,char **argv)
 	{
 		if(argv[i][0] != '-') break;
 		++i;
-		switch(argv[i-1][1]) //Rajouter une option pour la standardization ?
+		switch(argv[i-1][1])
 		{
 			case 'y':
 				y_lower = atof(argv[i]);
@@ -97,7 +97,7 @@ int main(int argc,char **argv)
 				y_upper = atof(argv[i]);
 				y_scaling = 1;
 				break;
-			case 'n' : standardization = 1;
+			case 'n' : standardization = atoi(argv[i]); break;
 			case 's': save_filename = argv[i]; break;
 			case 'r': restore_filename = argv[i]; break;
 			default:
@@ -134,11 +134,18 @@ int main(int argc,char **argv)
 #define SKIP_TARGET\
 	while(isspace(*p)) ++p;\
 	while(!isspace(*p)) ++p;
-
+	
 #define SKIP_ELEMENT\
 	while(*p!=':') ++p;\
 	++p;\
 	while(isspace(*p)) ++p;\
+	while(*p && !isspace(*p)) ++p;
+
+#define SKIP_INDEX\
+	while(*p!=':') ++p;\
+	++p;
+	
+#define SKIP_VALUE\
 	while(*p && !isspace(*p)) ++p;
 	
 	construct_data_types(fp);
@@ -407,10 +414,10 @@ int main(int argc,char **argv)
 							{
 								return clean_up(fp_restore, fp, "ERROR: failed to read scaling parameters\n");
 							} else {
-								(my_features[idx].f_quant).mean = dble_value1;
-								(my_features[idx].f_quant).standard_deviation = dble_value2;
-								(my_features[idx].f_quant).feature_min = dble_value3;
-								(my_features[idx].f_quant).feature_max = dble_value4;
+								(my_features[idx-1].f_quant).mean = dble_value1;
+								(my_features[idx-1].f_quant).standard_deviation = dble_value2;
+								(my_features[idx-1].f_quant).feature_min = dble_value3;
+								(my_features[idx-1].f_quant).feature_max = dble_value4;
 							}
 							break;
 						case ORD:
@@ -418,22 +425,22 @@ int main(int argc,char **argv)
 							{
 								return clean_up(fp_restore, fp, "ERROR: failed to read scaling parameters\n");
 							} else {
-								(my_features[idx].f_ord).min = int_value1;
-								(my_features[idx].f_ord).max = int_value2;
-								(my_features[idx].f_ord).range = int_value3;
+								(my_features[idx-1].f_ord).min = int_value1;
+								(my_features[idx-1].f_ord).max = int_value2;
+								(my_features[idx-1].f_ord).range = int_value3;
 
-								(my_features[idx].f_ord).ranks = Malloc(double, (my_features[idx].f_ord).max - (my_features[idx].f_ord).min +1);
+								(my_features[idx-1].f_ord).ranks = Malloc(double, (my_features[idx-1].f_ord).max - (my_features[idx-1].f_ord).min +1);
 								
 								if (readline(fp_restore) != NULL){
 									val = strtok(line, " \t\n");
-									for (i = (my_features[idx].f_ord).min; i < (my_features[idx].f_ord).max; i++)
+									for (i = (my_features[idx-1].f_ord).min; i < (my_features[idx-1].f_ord).max; i++)
 									{
 										//errno = 0
-										(my_features[idx].f_ord).ranks[i] = strtod(val,&endptr);
+										(my_features[idx-1].f_ord).ranks[i] = strtod(val,&endptr);
 										//TODO : if(endptr == val || errno != 0 || (*endptr != '\0' && !isspace(*endptr))) -> error
 										val = strtok(NULL, " \t\n");
 									}
-									(my_features[idx].f_ord).ranks[i] = strtod(val,&endptr);
+									(my_features[idx-1].f_ord).ranks[i] = strtod(val,&endptr);
 								} //else error ?
 							}
 							break;
@@ -447,21 +454,157 @@ int main(int argc,char **argv)
 			fclose(fp_restore);
 			
 		} else { //Compute features from input
+			char *p=line;
+			double target;
+			int idx;
+			double dble_value;
+
+			//INITIALZATION
+			for (i=0; i < max_index; i++)
+			{
+				switch(data_types[i+1])
+				{
+					case QUANT:
+						(my_features[i].f_quant).mean = 0;
+						(my_features[i].f_quant).standard_deviation =0;
+						(my_features[i].f_quant).feature_min = DBL_MAX;
+						(my_features[i].f_quant).feature_max = -DBL_MAX;
+						break;
+					case ORD:
+						(my_features[i].f_ord).min = INT_MAX;
+						(my_features[i].f_ord).max = -INT_MAX;
+						break;
+					default:
+						break;
+				}
+			}
+			
 			//PASS 1
 			//    QUANT: find out the mean + the min and max
 			//    ORD: find out the min and max
-		  
-			//PASS 1.5
+			for (i = 0; i < data_types[0]; i++) { readline(fp); } // skip TYPES lines
+			while(readline(fp)!=NULL)
+			{
+				p = line;
+				if (sscanf(p,"%lf",&target) != 1)
+					return clean_up(fp_restore, fp, "ERROR: failed to read labels\n");
+				y_max = max(y_max,target);
+				y_min = min(y_min,target);
+				
+				SKIP_TARGET
+				
+				while(sscanf(p,"%d:", &idx) == 1)
+				{
+					SKIP_INDEX
+					switch(data_types[idx])
+					{
+						case QUANT:
+							if(sscanf(p, "%lf",&dble_value) !=1)
+								return clean_up(fp_restore, fp, "ERROR: failed to read input\n");
+							(my_features[idx-1].f_quant).mean += dble_value;
+							(my_features[idx-1].f_quant).feature_min = min((my_features[idx-1].f_quant).feature_min,dble_value);
+							(my_features[idx-1].f_quant).feature_max = max((my_features[idx-1].f_quant).feature_max,dble_value);
+							break;
+						case ORD:
+							if(sscanf(p, "%lf",&dble_value) !=1)
+								return clean_up(fp_restore, fp, "ERROR: failed to read input\n");
+							(my_features[idx-1].f_ord).min = min((my_features[idx-1].f_ord).min,(int)dble_value);
+							(my_features[idx-1].f_ord).max = max((my_features[idx-1].f_ord).max,(int)dble_value);
+							break;
+						default:
+							break;
+					}
+					SKIP_VALUE
+				}
+			}
+			rewind(fp);
+			
+			//PASS 1.5 (no parsing)
+			//    QUANT: divide mean by l
 			//    ORD: calloc ties and ranks
-		  
+			for (i = 0; i < max_index; i++) 
+			{ 
+				switch(data_types[i+1])
+				{
+					case QUANT:
+						(my_features[i].f_quant).mean = (my_features[i].f_quant).mean / (double)l;
+						break;
+					case ORD:
+						(my_features[i].f_ord).ties = Calloc(int, (my_features[i].f_ord).max - (my_features[i].f_ord).min +1);
+						(my_features[i].f_ord).ranks = Malloc(double, (my_features[i].f_ord).max - (my_features[i].f_ord).min +1);
+						break;
+				}
+			}
+			
 			//PASS 2
 			//    QUANT: find out the standard deviation
 			//    ORD: compute the ties
-		  
-			//PASS 2.5 (= no parsing)
-			//    QUANT: compute feature_min and feature_max
+			for (i = 0; i < data_types[0]; i++) { readline(fp); } // skip TYPES lines
+			while(readline(fp)!=NULL)
+			{
+				p = line;
+				if (sscanf(p,"%lf",&target) != 1)
+					return clean_up(fp_restore, fp, "ERROR: failed to read labels\n");
+				y_max = max(y_max,target);
+				y_min = min(y_min,target);
+				
+				SKIP_TARGET
+				
+				while(sscanf(p,"%d:", &idx) == 1)
+				{
+					SKIP_INDEX
+					switch(data_types[idx])
+					{
+						case QUANT:
+							if(sscanf(p, "%lf",&dble_value) !=1)
+								return clean_up(fp_restore, fp, "ERROR: failed to read input\n");
+							(my_features[idx-1].f_quant).standard_deviation += (dble_value - (my_features[idx-1].f_quant).mean) * (dble_value - (my_features[idx-1].f_quant).mean);
+							break;
+						case ORD:
+							if(sscanf(p, "%lf",&dble_value) !=1)
+								return clean_up(fp_restore, fp, "ERROR: failed to read input\n");
+							(my_features[idx-1].f_ord).ties[(int)dble_value - (my_features[idx-1].f_ord).min] += 1;
+							break;
+						default:
+							break;
+					}
+					SKIP_VALUE
+				}
+			}
+			rewind(fp);
+			
+			//PASS 2.5 (no parsing)
+			//    QUANT: divide standard deviation by l + sqrt, compute feature_min and feature_max
 			//    ORD: compute the ranks and the range
-		  
+			for (i = 0; i < max_index; i++) 
+			{ 
+				switch(data_types[i+1])
+				{
+					case QUANT:
+						(my_features[i].f_quant).standard_deviation = (my_features[i].f_quant).standard_deviation / (double)l;
+						(my_features[i].f_quant).standard_deviation = sqrt((my_features[i].f_quant).standard_deviation);
+						if (standardization)
+						{
+							(my_features[i].f_quant).feature_min = ((my_features[i].f_quant).feature_min - (my_features[i].f_quant).mean) / (my_features[i].f_quant).standard_deviation;
+							(my_features[i].f_quant).feature_max = ((my_features[i].f_quant).feature_max - (my_features[i].f_quant).mean) / (my_features[i].f_quant).standard_deviation;
+						}
+						break;
+					case ORD:
+						int accu = 0;
+						for (j = 0; j < (my_features[i].f_ord).max - (my_features[i].f_ord).min +1; j++)
+						{
+							if ((my_features[i].f_ord).ties[j] == 0)
+							{
+								(my_features[i].f_ord).ranks[j] = -1;
+							} else {
+								(my_features[i].f_ord).ranks[j] = (double)accu + ((double)(my_features[i].f_ord).ties[j] + 1.0)/2.0;
+								accu += (my_features[i].f_ord).ties[j];
+							}
+						}
+						(my_features[i].f_ord).range = accu+1;
+						break;
+				}
+			}
 		}
 	  
 		if(save_filename) //Save features in save_filename
@@ -480,15 +623,15 @@ int main(int argc,char **argv)
 			}
 			fprintf(fp_save, "x\n");
 			fprintf(fp_save, "%d\n", standardization);
-			for(i=1;i<=max_index;i++)
+			for(i=0;i<max_index;i++)
 			{
-				switch(data_types[i])
+				switch(data_types[i+1])
 				{
 					case QUANT:
-						fprintf(fp_save, "%d: %.16g %.16g %.16g %.16g\n", i, (my_features[i].f_quant).mean, (my_features[i].f_quant).standard_deviation, (my_features[i].f_quant).feature_min, (my_features[i].f_quant).feature_max);
+						fprintf(fp_save, "%d: %.16g %.16g %.16g %.16g\n", i+1, (my_features[i].f_quant).mean, (my_features[i].f_quant).standard_deviation, (my_features[i].f_quant).feature_min, (my_features[i].f_quant).feature_max);
 						break;
 					case ORD:
-						fprintf(fp_save, "%d: %d %d %d\n", i, (my_features[i].f_ord).min, (my_features[i].f_ord).max, (my_features[i].f_ord).range);
+						fprintf(fp_save, "%d: %d %d %d\n", i+1, (my_features[i].f_ord).min, (my_features[i].f_ord).max, (my_features[i].f_ord).range);
 						for (j = (my_features[i].f_ord).min; j <= (my_features[i].f_ord).max; j++)
 						{
 							fprintf(fp_save, "%.16g ", (my_features[i].f_ord).ranks[j - (my_features[i].f_ord).min]);
@@ -496,9 +639,6 @@ int main(int argc,char **argv)
 						break;
 				}
 			}
-			if(min_index < 1)
-				fprintf(stderr,
-					"WARNING: scaling factors with indices smaller than 1 are not stored to the file %s.\n", save_filename);
 			fclose(fp_save);
 		}
 		
@@ -531,6 +671,7 @@ int main(int argc,char **argv)
 
 			while(sscanf(p,"%d:",&index)==1)
 			{
+				SKIP_INDEX
 				for(i=next_index;i<index;i++)
 					output(i,0);
 				
@@ -593,7 +734,7 @@ int main(int argc,char **argv)
 						break; 
 				}
 					
-				SKIP_ELEMENT
+				SKIP_VALUE
 				next_index=index+1;
 			}		
 
@@ -602,11 +743,23 @@ int main(int argc,char **argv)
 
 			printf("\n");
 		}
+		for (i = 0; i < max_index; i++)
+		{
+			switch(data_types[i+1])
+			{
+				case ORD:
+					free((my_features[i].f_ord).ties);
+					free((my_features[i].f_ord).ranks);
+					break;
+			}
+		}
+		free(my_features);
 	}
-
+	
 	free(line);
 	free(feature_max);
 	free(feature_min);
+	free(data_types);
 	fclose(fp);
 	return 0;
 }
@@ -685,24 +838,24 @@ void output_ord(int index, double value)
 		value = (my_features[index-1].f_ord).range;
 	if (value >= (my_features[index-1].f_ord).min && value <= (my_features[index-1].f_ord).max)
 	{
-		if ((my_features[index-1].f_ord).ranks[(int)value] == -1){
+		if ((my_features[index-1].f_ord).ranks[(int)value-(my_features[index-1].f_ord).min] == -1){
 			for (i = (int)value; i <= (my_features[index-1].f_ord).max; i++){
-				if ((my_features[index-1].f_ord).ranks[i] != -1)
+				if ((my_features[index-1].f_ord).ranks[i-(my_features[index-1].f_ord).min] != -1)
 				{
-					value = (my_features[index-1].f_ord).ranks[i];
+					value = (my_features[index-1].f_ord).ranks[i-(my_features[index-1].f_ord).min];
 					break;
 				}
 			}
 			for (i = (int)value; i >= (my_features[index-1].f_ord).min; i--){
-				if ((my_features[index-1].f_ord).ranks[i] != -1)
+				if ((my_features[index-1].f_ord).ranks[i-(my_features[index-1].f_ord).min] != -1)
 				{
-					value = value + (my_features[index-1].f_ord).ranks[i];
+					value = value + (my_features[index-1].f_ord).ranks[i-(my_features[index-1].f_ord).min];
 					break;
 				}
 			}
 			value = value / 2.0;
 		} else {
-			value = (my_features[index-1].f_ord).ranks[(int)value];
+			value = (my_features[index-1].f_ord).ranks[(int)value-(my_features[index-1].f_ord).min];
 		}
 	}
 	value = value / (my_features[index-1].f_ord).range;
@@ -746,6 +899,7 @@ void construct_data_types(FILE *fp)
 	}
 	
 	num_line = 1;
+	l = 0;
 	while(readline(fp)!=NULL)
 	{
 		num_line++;
@@ -773,6 +927,9 @@ void construct_data_types(FILE *fp)
 					data_types[i] = Types_to_int(label);
 				}
 			}
+		} else {
+			l++;
 		}
 	}
+	rewind(fp);
 }
