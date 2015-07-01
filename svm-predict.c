@@ -82,7 +82,7 @@ void predict(FILE *input, FILE *output)
 
 	max_line_len = 1024;
 	line = (char *)malloc(max_line_len*sizeof(char));
-	construct_data_types(input);
+	
 	for (int i = 0; i < data_types[0]; i++) { readline(input); }
 	while(readline(input) != NULL)
 	{
@@ -318,6 +318,9 @@ int main(int argc, char **argv)
 		fprintf(stderr,"can't open input file %s\n",argv[i]);
 		exit(1);
 	}
+	max_line_len = 1024;
+	line = (char *)malloc(max_line_len*sizeof(char));
+	construct_data_types(input);
 
 	output = fopen(argv[i+2],"w");
 	if(output == NULL)
@@ -326,7 +329,7 @@ int main(int argc, char **argv)
 		exit(1);
 	}
 
-	if((model=svm_load_model(argv[i+1]))==0)
+	if((model=svm_load_model(data_types, argv[i+1]))==0)
 	{
 		fprintf(stderr,"can't open model file %s\n",argv[i+1]);
 		exit(1);

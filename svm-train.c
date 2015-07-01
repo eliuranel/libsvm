@@ -91,6 +91,18 @@ int main(int argc, char **argv)
 	
 	parse_command_line(argc, argv, input_file_name, model_file_name);
 	read_problem(input_file_name);
+	
+//	printf("l = %d\n",prob.l);
+/*	for (int i = 0; i < prob.l ; i++)
+	{
+		while ((prob.x)[i]->index != -1)
+		{
+			output_svm_node(prob.data_types, (prob.x)[i]);
+			(prob.x)[i]++;
+		}
+		printf("\n");
+	}*/
+	
 /*	error_msg = svm_check_parameter(&prob,&param);
 
 	if(error_msg)
@@ -106,7 +118,7 @@ int main(int argc, char **argv)
 	else
 	{
 		model = svm_train(&prob,&param);
-		if(svm_save_model(model_file_name,model))
+		if(svm_save_model(model_file_name,prob.data_types, model))
 		{
 			fprintf(stderr, "can't save model to file %s\n", model_file_name);
 			exit(1);
@@ -530,7 +542,11 @@ void read_problem(const char *filename)
 						val = strtok(NULL," \t\n");
 						if(val == NULL)
 							break;
-						(x_space[j].value).nom = val;
+//						printf("val is %s\n", val);
+//						printf("%d\n", strlen(val));
+						(x_space[j].value).nom = Malloc(char, strlen(val));
+						strcpy((x_space[j].value).nom, val);
+//						printf("what I store is %s\n", (x_space[j].value).nom);
 						break;
 				}
 			} else {

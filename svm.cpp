@@ -7,6 +7,7 @@
 #include <stdarg.h>
 #include <limits.h>
 #include <locale.h>
+#include <errno.h>
 #include <math.h>  //fabs, cos
 #include "svm.h"
 int libsvm_version = LIBSVM_VERSION;
@@ -337,9 +338,9 @@ double Kernel::heterogeneouscoeff (int* pdata_types, svm_node px, svm_node py)
 		case MULT: //TODO : à compléter
 			return 0;
 		case NOM:
-			printf("%s\n",(px.value).nom);
-			printf("%d\n",py.index);
-			printf("%s\n",(py.value).nom);
+//			printf("%s\n",(px.value).nom);
+//			printf("%d\n",py.index);
+//			printf("%s\n",(py.value).nom);
 			if(strcmp((px.value).nom,(py.value).nom)==0){
 				return 1;
 			} else {
@@ -2740,7 +2741,7 @@ static const char *kernel_type_table[]=
 	"linear","polynomial","rbf","sigmoid","gower","precomputed",NULL
 };
 
-int svm_save_model(const char *model_file_name, const svm_model *model)
+int svm_save_model(const char *model_file_name, int *data_types, const svm_model *model)
 {
 	FILE *fp = fopen(model_file_name,"w");
 	if(fp==NULL) return -1;
@@ -2998,7 +2999,7 @@ bool read_model_header(FILE *fp, svm_model* model)
 
 }
 
-svm_model *svm_load_model(const char *model_file_name)
+svm_model *svm_load_model(int *data_types, const char *model_file_name)
 {
 	FILE *fp = fopen(model_file_name,"rb");
 	if(fp==NULL) return NULL;
@@ -3039,6 +3040,8 @@ svm_model *svm_load_model(const char *model_file_name)
 	max_line_len = 1024;
 	line = Malloc(char,max_line_len);
 	char *p,*endptr,*idx,*val;
+	int int_val1, int_val2;
+	double dbl_val1, dbl_val2, dbl_val3, dbl_val4;
 
 	while(readline(fp)!=NULL)
 	{
@@ -3066,7 +3069,7 @@ svm_model *svm_load_model(const char *model_file_name)
 	if(l>0) x_space = Malloc(svm_node,elements);
 
 	int j=0;
-	for(i=0;i<l;i++)
+	for(i=0;i<l;i++) //l = total # of SVs
 	{
 		readline(fp);
 		model->SV[i] = &x_space[j];
@@ -3082,12 +3085,126 @@ svm_model *svm_load_model(const char *model_file_name)
 		while(1)
 		{
 			idx = strtok(NULL, ":");
-			val = strtok(NULL, " \t");
-
-			if(val == NULL)
+			
+			if(idx == NULL)
 				break;
+
+			errno = 0;
 			x_space[j].index = (int) strtol(idx,&endptr,10);
-			(x_space[j].value).quant = strtod(val,&endptr);
+			
+			if(endptr == idx || errno != 0 || *endptr != '\0')
+			{
+				val = strtok(NULL," \t\n");
+				if(val == NULL){break;}
+				//else{exit_input_error(i+1);} TODO : return error ?
+			}
+			
+			errno = 0;
+			
+			if(data_types[0] != 0) {
+				switch(data_types[x_space[j].index]) //look at the type of the variable
+				{
+					case -1:
+						//exit_input_error(1); TODO : return error ?
+						break;
+					case QUANT:
+						val = strtok(NULL," \t\n");
+						if(val == NULL)
+							break;
+						(x_space[j].value).quant = strtod(val,&endptr);
+						if(endptr == val || errno != 0 || (*endptr != '\0' && !isspace(*endptr)))
+							//exit_input_error(i+1); TODO : return error ?
+						break;
+					case DICH:
+						val = strtok(NULL," \t\n");
+						if(val == NULL)
+							break;
+						(x_space[j].value).dich = *val;
+	//					if(val+sizeof(char) != NULL)      //TODO vérifier que ça marche bien comme attendu 
+	//						exit_input_error(i+1);
+						break;
+					case ORD:
+						val = strtok(NULL," \t\n");
+						if(val == NULL)
+							break;
+						(x_space[j].value).ord = strtod(val,&endptr);
+						if(endptr == val || errno != 0 || (*endptr != '\0' && !isspace(*endptr)))
+							//exit_input_error(i+1); TODO : return error ?
+						break;
+					case C_CIRC:
+						val = strtok(NULL," \t\n");
+						if(val == NULL)
+							break;
+						(x_space[j].value).c_circ = strtod(val,&endptr);
+						if(endptr == val || errno != 0 || (*endptr != '\0' && !isspace(*endptr)))
+							//exit_input_error(i+1); TODO : return error ?
+						break;
+					case D_CIRC:
+						val = strtok(NULL,",");
+						if(val == NULL)
+							break;
+						int_val1 = (int)strtol(val,&endptr,10); //TODO qu'est-ce que le 10 ??
+						if(endptr == val || errno != 0 || (*endptr != '\0' && !isspace(*endptr)))
+							//exit_input_error(i+1); TODO : return error ?
+						
+						val = strtok(NULL," \t\n");
+						if(val == NULL)
+							break;
+						int_val2 = (int)strtol(val,&endptr,10); //TODO qu'est-ce que le 10 ??
+						if(endptr == val || errno != 0 || (*endptr != '\0' && !isspace(*endptr)))
+							//exit_input_error(i+1); TODO : return error ?
+						
+						(x_space[j].value).d_circ = (struct int_pair){.first = int_val1, .second = int_val2};
+						break;
+					case FUZZ:
+						val = strtok(NULL,",");
+						if(val == NULL)
+							break;
+						dbl_val1 = strtod(val,&endptr);
+						if(endptr == val || errno != 0 || (*endptr != '\0' && !isspace(*endptr)))
+							//exit_input_error(i+1); TODO : return error ?
+						
+						val = strtok(NULL,",");
+						if(val == NULL)
+							break;
+						dbl_val2 = strtod(val,&endptr);
+						if(endptr == val || errno != 0 || (*endptr != '\0' && !isspace(*endptr)))
+							//exit_input_error(i+1); TODO : return error ?
+						val = strtok(NULL,",");
+						if(val == NULL)
+							break;
+						dbl_val3 = strtod(val,&endptr);
+						if(endptr == val || errno != 0 || (*endptr != '\0' && !isspace(*endptr)))
+							//exit_input_error(i+1); TODO : return error ?
+						
+						val = strtok(NULL," \t\n");
+						if(val == NULL)
+							break;
+						dbl_val4 = strtod(val,&endptr);
+						if(endptr == val || errno != 0 || (*endptr != '\0' && !isspace(*endptr)))
+							//exit_input_error(i+1); TODO : return error ?
+						
+						(x_space[j].value).fuzz = (struct fuzzy) {.center = dbl_val1, .left = dbl_val2, .right = dbl_val3, .height = dbl_val4};
+						break;
+					case MULT:  //TODO à compléter
+						(x_space[j].value).mult = (uint32_t) 0;
+						break;
+					case NOM:
+						val = strtok(NULL," \t\n");
+						if(val == NULL)
+							break;
+						(x_space[j].value).nom = Malloc(char, strlen(val));
+						strcpy((x_space[j].value).nom, val);
+						break;
+				}
+			} else {
+				val = strtok(NULL," \t\n");
+				if(val == NULL)
+					break;
+				(x_space[j].value).quant = strtod(val,&endptr);
+				if(endptr == val || errno != 0 || (*endptr != '\0' && !isspace(*endptr))){}
+					//exit_input_error(i+1); TODO : return error ?
+			}
 
 			++j;
 		}
@@ -3309,3 +3426,16 @@ int Types_to_int(char * s) {
   return -1; 
 }
 
+void output_svm_node (int *data_types, struct svm_node *x){
+	switch(data_types[x->index]){
+		case QUANT:
+			printf("%d : %.16g ; ",x->index, x->value.quant);
+			break;
+		case ORD:
+			printf("%d : %.16g ; ",x->index, x->value.ord);
+			break;
+		case NOM:
+			printf("%d : %s ; ",x->index, x->value.nom);
+			break;
+	}
+}

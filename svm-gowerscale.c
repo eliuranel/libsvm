@@ -84,7 +84,7 @@ int main(int argc,char **argv)
 	FILE *fp, *fp_restore = NULL;
 	char *save_filename = NULL;
 	char *restore_filename = NULL;
-
+	
 	for(i=1;i<argc;i++)
 	{
 		if(argv[i][0] != '-') break;
@@ -680,6 +680,7 @@ int main(int argc,char **argv)
 				{
 					case QUANT:
 						if(sscanf(p,"%lf",&dble_value)!=1) {
+							printf("coucou-quant\n");
 							exit_input_error(num_line);
 						} else {
 							output_quant(index,dble_value);
@@ -687,6 +688,7 @@ int main(int argc,char **argv)
 						break;
 					case ORD:
 						if(sscanf(p,"%lf",&dble_value)!=1) {
+							printf("coucou-ord\n");
 							exit_input_error(num_line);
 						} else {
 							output_ord(index,dble_value);
@@ -694,12 +696,15 @@ int main(int argc,char **argv)
 						break;
 					case DICH:
 						if(sscanf(p,"%c",&char_value)!=1) {
+							printf("coucou-dich\n");
 							exit_input_error(num_line);
 						} else {
 							printf("%d:%c ",index,char_value);
 						}
+						break;
 					case C_CIRC:
 						if(sscanf(p,"%lf",&dble_value)!=1) {
+							printf("coucou-c_circ\n");
 							exit_input_error(num_line);
 						} else {
 							printf("%d:%g ",index,dble_value);
@@ -707,6 +712,7 @@ int main(int argc,char **argv)
 						break;  
 					case D_CIRC:
 						if(sscanf(p,"%d,%d",&int_value1,&int_value2)!=2) {
+							printf("coucou-d_circ\n");
 							exit_input_error(num_line);
 						} else {
 							printf("%d:%d,%d ",index,int_value1,int_value2);
@@ -714,6 +720,7 @@ int main(int argc,char **argv)
 						break;
 					case FUZZ:
 						if(sscanf(p,"%lf,%lf,%lf,%lf",&dble_value1,&dble_value2,&dble_value3,&dble_value4)!=4) {
+							printf("coucou-fuzz\n");
 							exit_input_error(num_line);
 						} else {
 							printf("%lf,%lf,%lf,%lf",dble_value1,dble_value2,dble_value3,dble_value4);
@@ -721,6 +728,7 @@ int main(int argc,char **argv)
 						break;
 					case MULT:
 						if(sscanf(p,"%d",&int_value)!=1) {
+							printf("coucou-mult\n");
 							exit_input_error(num_line);
 						} else {
 							printf("%d:%d ",index,int_value);
@@ -728,6 +736,7 @@ int main(int argc,char **argv)
 						break;
 					case NOM:
 						if(sscanf(p,"%[^ \n\t]",string_value)!=1) {
+							printf("coucou-nom\n");
 							exit_input_error(num_line);
 						} else {
 							printf("%d:%s ",index,string_value);
@@ -918,10 +927,10 @@ void construct_data_types(FILE *fp)
 				errno = 0;
 				i_min = (int) strtol(idx_min,&endptr,10);  //TODO qu'est-ce que le 10 ??
 				if(endptr == idx_min || errno != 0 || *endptr != '\0')
-					exit_input_error(num_line+1);
+					exit_input_error(num_line);
 				i_max = (int) strtol(idx_max,&endptr,10);  //TODO qu'est-ce que le 10 ??
 				if(endptr == idx_max || errno != 0 || *endptr != '\0')
-					exit_input_error(num_line+1);
+					exit_input_error(num_line);
 				for (i = i_min; i <= i_max; i++)
 				{
 					data_types[i] = Types_to_int(label);

@@ -105,8 +105,8 @@ struct svm_model
 struct svm_model *svm_train(const struct svm_problem *prob, const struct svm_parameter *param);
 void svm_cross_validation(const struct svm_problem *prob, const struct svm_parameter *param, int nr_fold, double *target);
 
-int svm_save_model(const char *model_file_name, const struct svm_model *model);
-struct svm_model *svm_load_model(const char *model_file_name);
+int svm_save_model(const char *model_file_name, int *data_types, const struct svm_model *model);
+struct svm_model *svm_load_model(int *data_types, const char *model_file_name);
 
 int svm_get_svm_type(const struct svm_model *model);
 int svm_get_nr_class(const struct svm_model *model);
@@ -129,6 +129,8 @@ int svm_check_probability_model(const struct svm_model *model);
 void svm_set_print_string_function(void (*print_func)(const char *));
 
 int Types_to_int(char * s);
+
+void output_svm_node (int *data_types, struct svm_node *x);
 
 #ifdef __cplusplus
 }
