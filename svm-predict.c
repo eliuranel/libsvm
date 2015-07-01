@@ -5,6 +5,10 @@
 #include <errno.h>
 #include "svm.h"
 
+#define Malloc(type,n) (type *)malloc((n)*sizeof(type))
+#define Calloc(type,n) (type *)calloc(n,sizeof(type)) //same as malloc but set allocated memory to 0
+
+
 int print_null(const char *s,...) {return 0;}
 
 static int (*info)(const char *fmt,...) = &printf;
@@ -17,6 +21,11 @@ int predict_probability=0;
 
 static char *line = NULL;
 static int max_line_len;
+int *data_types;
+int l;
+int max_index;
+
+void construct_data_types(FILE *fp);
 
 static char* readline(FILE *input)
 {
@@ -73,10 +82,14 @@ void predict(FILE *input, FILE *output)
 
 	max_line_len = 1024;
 	line = (char *)malloc(max_line_len*sizeof(char));
+	construct_data_types(input);
+	for (int i = 0; i < data_types[0]; i++) { readline(input); }
 	while(readline(input) != NULL)
 	{
 		int i = 0;
+		int int_val1, int_val2;
 		double target_label, predict_label;
+		double dbl_val1, dbl_val2, dbl_val3, dbl_val4;
 		char *idx, *val, *label, *endptr;
 		int inst_max_index = -1; // strtol gives 0 if wrong format, and precomputed kernel has <index> start from 0
 
@@ -97,29 +110,133 @@ void predict(FILE *input, FILE *output)
 			}
 
 			idx = strtok(NULL,":");
-			val = strtok(NULL," \t");
-
-			if(val == NULL)
+			
+			if(idx == NULL)
 				break;
+			
 			errno = 0;
 			x[i].index = (int) strtol(idx,&endptr,10);
 			if(endptr == idx || errno != 0 || *endptr != '\0' || x[i].index <= inst_max_index)
+			{
+				val = strtok(NULL," \t\n");
+				if(val == NULL){break;}
 				exit_input_error(total+1);
-			else
+			} else {
 				inst_max_index = x[i].index;
+			}
 
 			errno = 0;
-			(x[i].value).quant = strtod(val,&endptr);  //TODO (svm node .value = string ?)
-			if(endptr == val || errno != 0 || (*endptr != '\0' && !isspace(*endptr)))
-				exit_input_error(total+1);
-
+			if(data_types[0] != 0) {
+				switch(data_types[x[i].index]) //look at the type of the variable
+				{
+					case -1:
+						exit_input_error(1);
+						break;
+					case QUANT:
+						val = strtok(NULL," \t\n");
+						if(val == NULL)
+							break;
+						(x[i].value).quant = strtod(val,&endptr);
+						if(endptr == val || errno != 0 || (*endptr != '\0' && !isspace(*endptr)))
+							exit_input_error(total+1);
+						break;
+					case DICH:
+						val = strtok(NULL," \t\n");
+						if(val == NULL)
+							break;
+						(x[i].value).dich = *val;
+	//					if(val+sizeof(char) != NULL)      //TODO vérifier que ça marche bien comme attendu 
+	//						exit_input_error(total+1);
+						break;
+					case ORD:
+						val = strtok(NULL," \t\n");
+						if(val == NULL)
+							break;
+						(x[i].value).ord = strtod(val,&endptr);
+						if(endptr == val || errno != 0 || (*endptr != '\0' && !isspace(*endptr)))
+							exit_input_error(total+1);
+						break;
+					case C_CIRC:
+						val = strtok(NULL," \t\n");
+						if(val == NULL)
+							break;
+						(x[i].value).c_circ = strtod(val,&endptr);
+						if(endptr == val || errno != 0 || (*endptr != '\0' && !isspace(*endptr)))
+							exit_input_error(total+1);
+						break;
+					case D_CIRC:
+						val = strtok(NULL,",");
+						if(val == NULL)
+							break;
+						int_val1 = (int)strtol(val,&endptr,10); //TODO qu'est-ce que le 10 ??
+						if(endptr == val || errno != 0 || (*endptr != '\0' && !isspace(*endptr)))
+							exit_input_error(total+1);
+						
+						val = strtok(NULL," \t\n");
+						if(val == NULL)
+							break;
+						int_val2 = (int)strtol(val,&endptr,10); //TODO qu'est-ce que le 10 ??
+						if(endptr == val || errno != 0 || (*endptr != '\0' && !isspace(*endptr)))
+							exit_input_error(total+1);
+						
+						(x[i].value).d_circ = (struct int_pair){.first = int_val1, .second = int_val2};
+						break;
+					case FUZZ:
+						val = strtok(NULL,",");
+						if(val == NULL)
+							break;
+						dbl_val1 = strtod(val,&endptr);
+						if(endptr == val || errno != 0 || (*endptr != '\0' && !isspace(*endptr)))
+							exit_input_error(total+1);
+						
+						val = strtok(NULL,",");
+						if(val == NULL)
+							break;
+						dbl_val2 = strtod(val,&endptr);
+						if(endptr == val || errno != 0 || (*endptr != '\0' && !isspace(*endptr)))
+							exit_input_error(total+1);
+						val = strtok(NULL,",");
+						if(val == NULL)
+							break;
+						dbl_val3 = strtod(val,&endptr);
+						if(endptr == val || errno != 0 || (*endptr != '\0' && !isspace(*endptr)))
+							exit_input_error(total+1);
+						
+						val = strtok(NULL," \t\n");
+						if(val == NULL)
+							break;
+						dbl_val4 = strtod(val,&endptr);
+						if(endptr == val || errno != 0 || (*endptr != '\0' && !isspace(*endptr)))
+							exit_input_error(total+1);
+						
+						(x[i].value).fuzz = (struct fuzzy) {.center = dbl_val1, .left = dbl_val2, .right = dbl_val3, .height = dbl_val4};
+						break;
+					case MULT:  //TODO à compléter
+						(x[i].value).mult = (uint32_t) 0;
+						break;
+					case NOM:
+						val = strtok(NULL," \t\n");
+						if(val == NULL)
+							break;
+						(x[i].value).nom = val;
+						break;
+				}
+			} else {
+				val = strtok(NULL," \t\n");
+				if(val == NULL)
+					break;
+				(x[i].value).quant = strtod(val,&endptr);
+				if(endptr == val || errno != 0 || (*endptr != '\0' && !isspace(*endptr)))
+					exit_input_error(total+1);
+			}
+			
 			++i;
 		}
 		x[i].index = -1;
-
+		
 		if (predict_probability && (svm_type==C_SVC || svm_type==NU_SVC))
 		{
-			predict_label = svm_predict_probability(model,x,prob_estimates);
+			predict_label = svm_predict_probability(model,data_types,x,prob_estimates);
 			fprintf(output,"%g",predict_label);
 			for(j=0;j<nr_class;j++)
 				fprintf(output," %g",prob_estimates[j]);
@@ -127,7 +244,7 @@ void predict(FILE *input, FILE *output)
 		}
 		else
 		{
-			predict_label = svm_predict(model,x);
+			predict_label = svm_predict(model,data_types, x);
 			fprintf(output,"%g\n",predict_label);
 		}
 
@@ -154,6 +271,7 @@ void predict(FILE *input, FILE *output)
 			(double)correct/total*100,correct,total);
 	if(predict_probability)
 		free(prob_estimates);
+	free(data_types);
 }
 
 void exit_with_help()
@@ -236,4 +354,64 @@ int main(int argc, char **argv)
 	fclose(input);
 	fclose(output);
 	return 0;
+}
+
+void construct_data_types(FILE *fp)
+{
+	int num_line, i_min, i_max, i;
+	char *endptr;
+	char *label, *idx_min, *idx_max;
+	if(readline(fp)!=NULL)
+	{
+		char *pp = strtok(line," \t");
+		if(strcmp(pp,"TYPES")==0)
+		{
+			label = strtok(NULL," \t\n");
+			if(label == NULL)
+				exit_input_error(1);
+			max_index = (int) strtol(label,&endptr,10);  //TODO qu'est-ce que le 10 ??
+			if(endptr == label || *endptr != '\0')
+				exit_input_error(1);
+			data_types = Calloc(int, max_index+1);
+			data_types[0] = 1;
+		} else {
+			data_types = Calloc(int,1);
+			rewind(fp);
+		}
+	}
+	
+	num_line = 1;
+	l = 0;
+	while(readline(fp)!=NULL)
+	{
+		num_line++;
+		char *pp = strtok(line," \t");
+		if(strcmp(pp,"TYPES")==0)
+		{
+			data_types[0]++;
+			label = strtok(NULL," \t\n");
+			while(1){
+				idx_min = strtok(NULL,">");
+				if(idx_min == NULL)
+					break;
+				idx_max = strtok(NULL,", \t\n");
+				if(idx_max == NULL)
+					break;
+				errno = 0;
+				i_min = (int) strtol(idx_min,&endptr,10);  //TODO qu'est-ce que le 10 ??
+				if(endptr == idx_min || errno != 0 || *endptr != '\0')
+					exit_input_error(num_line+1);
+				i_max = (int) strtol(idx_max,&endptr,10);  //TODO qu'est-ce que le 10 ??
+				if(endptr == idx_max || errno != 0 || *endptr != '\0')
+					exit_input_error(num_line+1);
+				for (i = i_min; i <= i_max; i++)
+				{
+					data_types[i] = Types_to_int(label);
+				}
+			}
+		} else {
+			l++;
+		}
+	}
+	rewind(fp);
 }

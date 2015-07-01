@@ -429,18 +429,18 @@ int main(int argc,char **argv)
 								(my_features[idx-1].f_ord).max = int_value2;
 								(my_features[idx-1].f_ord).range = int_value3;
 
-								(my_features[idx-1].f_ord).ranks = Malloc(double, (my_features[idx-1].f_ord).max - (my_features[idx-1].f_ord).min +1);
+								(my_features[idx-1].f_ord).ranks = Malloc(double, (my_features[idx-1].f_ord).max - (my_features[idx-1].f_ord).min + 1);
 								
 								if (readline(fp_restore) != NULL){
 									val = strtok(line, " \t\n");
 									for (i = (my_features[idx-1].f_ord).min; i < (my_features[idx-1].f_ord).max; i++)
 									{
 										//errno = 0
-										(my_features[idx-1].f_ord).ranks[i] = strtod(val,&endptr);
+										(my_features[idx-1].f_ord).ranks[i-(my_features[idx-1].f_ord).min] = strtod(val,&endptr);
 										//TODO : if(endptr == val || errno != 0 || (*endptr != '\0' && !isspace(*endptr))) -> error
 										val = strtok(NULL, " \t\n");
 									}
-									(my_features[idx-1].f_ord).ranks[i] = strtod(val,&endptr);
+									(my_features[idx-1].f_ord).ranks[i-(my_features[idx-1].f_ord).min] = strtod(val,&endptr);
 								} //else error ?
 							}
 							break;
@@ -575,7 +575,7 @@ int main(int argc,char **argv)
 			
 			//PASS 2.5 (no parsing)
 			//    QUANT: divide standard deviation by l + sqrt, compute feature_min and feature_max
-			//    ORD: compute the ranks and the range
+			//    ORD: compute the ranks and the range + free ties
 			for (i = 0; i < max_index; i++) 
 			{ 
 				switch(data_types[i+1])
@@ -602,6 +602,7 @@ int main(int argc,char **argv)
 							}
 						}
 						(my_features[i].f_ord).range = accu+1;
+						free((my_features[i].f_ord).ties);
 						break;
 				}
 			}
@@ -658,7 +659,7 @@ int main(int argc,char **argv)
 			double target;
 			double dble_value, dble_value1, dble_value2, dble_value3, dble_value4;
 			int int_value, int_value1, int_value2;
-			char *string_value;
+			char string_value[max_line_len];
 			char char_value;
 			
 			num_line++;
@@ -726,7 +727,7 @@ int main(int argc,char **argv)
 						}
 						break;
 					case NOM:
-						if(sscanf(p,"%s",string_value)!=1) { //TODO : OK ???
+						if(sscanf(p,"%[^ \n\t]",string_value)!=1) {
 							exit_input_error(num_line);
 						} else {
 							printf("%d:%s ",index,string_value);
@@ -748,7 +749,6 @@ int main(int argc,char **argv)
 			switch(data_types[i+1])
 			{
 				case ORD:
-					free((my_features[i].f_ord).ties);
 					free((my_features[i].f_ord).ranks);
 					break;
 			}

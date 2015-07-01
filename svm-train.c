@@ -394,10 +394,7 @@ void read_problem(const char *filename)
 		++prob.l; 
 	} 
 	rewind(fp); 
-	for (i = 0; i < prob.data_types[0]; i++)
-	{
-		readline(fp);
-	}
+	for (i = 0; i < prob.data_types[0]; i++) { readline(fp); }
 
 	prob.y = Malloc(double,prob.l);
 	prob.x = Malloc(struct svm_node *,prob.l);
@@ -436,9 +433,9 @@ void read_problem(const char *filename)
 				val = strtok(NULL," \t\n");
 				if(val == NULL){break;}
 				else{exit_input_error(i+1);}
-			}
-			else
+			} else {
 				inst_max_index = x_space[j].index;
+			}
 
 			errno = 0;
 			if(prob.data_types[0] != 0) {
