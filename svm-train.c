@@ -91,18 +91,6 @@ int main(int argc, char **argv)
 	
 	parse_command_line(argc, argv, input_file_name, model_file_name);
 	read_problem(input_file_name);
-	
-//	printf("l = %d\n",prob.l);
-/*	for (int i = 0; i < prob.l ; i++)
-	{
-		while ((prob.x)[i]->index != -1)
-		{
-			output_svm_node(prob.data_types, (prob.x)[i]);
-			(prob.x)[i]++;
-		}
-		printf("\n");
-	}*/
-	
 /*	error_msg = svm_check_parameter(&prob,&param);
 
 	if(error_msg)
@@ -142,7 +130,6 @@ void do_cross_validation()
 	double total_error = 0;
 	double sumv = 0, sumy = 0, sumvv = 0, sumyy = 0, sumvy = 0;
 	double *target = Malloc(double,prob.l);
-
 	svm_cross_validation(&prob,&param,nr_fold,target);
 	if(param.svm_type == EPSILON_SVR ||
 	   param.svm_type == NU_SVR)
@@ -342,6 +329,7 @@ void read_problem(const char *filename)
 				prob.data_types[i] = Types_to_int(val);
 			}
 */		} else {
+			prob.max_index = 0;
 			prob.data_types = Calloc(int,1);
 			rewind(fp);
 		}
@@ -384,11 +372,11 @@ void read_problem(const char *filename)
 		readline(fp);
 	}
 	
-	if(prob.data_types[0] != 0){
+/*	if(prob.data_types[0] != 0){
 		for (i = 0; i<prob.max_index+1; i++){
 			printf("%i : %i\n",i,prob.data_types[i]);
 		}
-	}
+	}*/
 	  
 	while(readline(fp)!=NULL)  
 	{

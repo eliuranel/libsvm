@@ -254,6 +254,16 @@ private:
 	{
 		return gower(data_types,x[i],x[j]);
 	}
+	double kernel_exp_gower(int i, int j) const
+	{
+		return exp(gamma*(gower(data_types,x[i],x[j])))/exp(gamma);
+	}
+	double kernel_non_lin_gower(int i, int j) const
+	{
+		double sg = gower(data_types,x[i],x[j]);
+		if (sg < 1/2) { return -gamma/(sg-.5-(-.25+.5*sqrt(.25+4*gamma)))-(-.25+.5*sqrt(.25+4*gamma)); }
+		else { return -gamma/(sg-.5+(-.25+.5*sqrt(.25+4*gamma)))+(-.25+.5*sqrt(.25+4*gamma))+1; } 
+	}
 	double kernel_precomputed(int i, int j) const
 	{
 		return (x[i][(int)((x[j][0].value).quant)].value).quant;
@@ -280,6 +290,12 @@ Kernel::Kernel(int l, int max_index, int* data_types_, svm_node * const * x_, co
 			break;
 		case GOWER:
 			kernel_function = &Kernel::kernel_gower;
+			break;
+		case EXPGOWER:
+			kernel_function = &Kernel::kernel_exp_gower;
+			break;
+		case NONLINGOWER:
+			kernel_function = &Kernel::kernel_non_lin_gower;
 			break;
 		case PRECOMPUTED:
 			kernel_function = &Kernel::kernel_precomputed;
@@ -317,9 +333,9 @@ double Kernel::heterogeneouscoeff (int* pdata_types, svm_node px, svm_node py)
 		case QUANT:
 			return 1 - fabs((px.value).quant - (py.value).quant);
 		case DICH:
-			if ((px.value).dich == '+' && (py.value).dich == '+')
+			if ((px.value).dich == '1' && (py.value).dich == '1')
 				return 1;
-			if ((px.value).dich == '-' && (py.value).dich == '-')
+			if ((px.value).dich == '0' && (py.value).dich == '0')
 				return -1;
 			return 0;
 		case ORD:
@@ -338,10 +354,9 @@ double Kernel::heterogeneouscoeff (int* pdata_types, svm_node px, svm_node py)
 		case MULT: //TODO : à compléter
 			return 0;
 		case NOM:
-//			printf("%s\n",(px.value).nom);
-//			printf("%d\n",py.index);
-//			printf("%s\n",(py.value).nom);
 			if(strcmp((px.value).nom,(py.value).nom)==0){
+				if(strcmp((px.value).nom,"others")==0)
+					return -1;
 				return 1;
 			} else {
 				return 0;
@@ -450,7 +465,15 @@ double Kernel::k_function(int* data_types,
 		case SIGMOID:
 			return tanh(param.gamma*dot(x,y)+param.coef0);
 		case GOWER:
-			return gower(data_types,x,y);  //TODO : a compléter
+			return gower(data_types,x,y);
+		case EXPGOWER:
+			return exp(param.gamma*(gower(data_types,x,y)))/exp(param.gamma);
+		case NONLINGOWER:
+		{
+			double sg = gower(data_types,x,y);
+			if (sg < 1/2) { return -param.gamma/(sg-.5-(-.25+.5*sqrt(.25+4*param.gamma)))-(-.25+.5*sqrt(.25+4*param.gamma)); }
+			else { return -param.gamma/(sg-.5+(-.25+.5*sqrt(.25+4*param.gamma)))+(-.25+.5*sqrt(.25+4*param.gamma))+1; }
+		}
 		case PRECOMPUTED:  //x: test (validation), y: SV
 			return (x[(int)((y->value).quant)].value).quant;
 		default:
@@ -2184,9 +2207,7 @@ svm_model *svm_train(const svm_problem *prob, const svm_parameter *param)
 	model->max_index = prob->max_index;
 	model->data_types = Malloc(int,model->max_index+1);
 	for (k=0;k<model->max_index+1;k++)
-	{
-		model->data_types[k] = prob->data_types[k];
-	}
+		{ model->data_types[k] = prob->data_types[k]; }
 	model->free_sv = 0;	// XXX
 
 	if(param->svm_type == ONE_CLASS ||
@@ -2521,6 +2542,11 @@ void svm_cross_validation(const svm_problem *prob, const svm_parameter *param, i
 		int j,k;
 		struct svm_problem subprob;
 
+		subprob.max_index = prob->max_index;
+		subprob.data_types = Malloc(int,subprob.max_index+1);
+		for (k=0;k<subprob.max_index+1;k++)
+			{ subprob.data_types[k] = prob->data_types[k]; }
+		  
 		subprob.l = l-(end-begin);
 		subprob.x = Malloc(struct svm_node*,subprob.l);
 		subprob.y = Malloc(double,subprob.l);
@@ -2738,7 +2764,7 @@ static const char *svm_type_table[] =
 
 static const char *kernel_type_table[]=
 {
-	"linear","polynomial","rbf","sigmoid","gower","precomputed",NULL
+	"linear","polynomial","rbf","sigmoid","gower","exponential-gower","non-linear-gower","precomputed",NULL
 };
 
 int svm_save_model(const char *model_file_name, int *data_types, const svm_model *model)
@@ -3296,6 +3322,8 @@ const char *svm_check_parameter(const svm_problem *prob, const svm_parameter *pa
 	   kernel_type != RBF &&
 	   kernel_type != SIGMOID &&
 	   kernel_type != GOWER &&
+	   kernel_type != EXPGOWER &&
+	   kernel_type != NONLINGOWER &&
 	   kernel_type != PRECOMPUTED)
 		return "unknown kernel type";
 

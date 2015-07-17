@@ -50,7 +50,7 @@ struct svm_problem
 };
 
 enum { C_SVC, NU_SVC, ONE_CLASS, EPSILON_SVR, NU_SVR };     /* svm_type */
-enum { LINEAR, POLY, RBF, SIGMOID, GOWER, PRECOMPUTED };    /* kernel_type */
+enum { LINEAR, POLY, RBF, SIGMOID, GOWER, EXPGOWER, NONLINGOWER, PRECOMPUTED };    /* kernel_type */
 enum { QUANT, DICH, ORD, C_CIRC, D_CIRC, FUZZ, MULT, NOM }; /* data_types*/
 
 

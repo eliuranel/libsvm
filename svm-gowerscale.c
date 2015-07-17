@@ -34,7 +34,7 @@ union feature {
 void exit_with_help()
 {
 	printf(
-	"Usage: svm-scale [options] data_filename\n"
+	"Usage: svm-gowerscale [options] data_filename\n"
 	"options:\n"
 	"-y y_lower y_upper : y scaling limits (default: no y scaling)\n"
 	"-n : wether to normalize quantitative variables with standardization (default: no standardization)\n"
@@ -500,14 +500,14 @@ int main(int argc,char **argv)
 					{
 						case QUANT:
 							if(sscanf(p, "%lf",&dble_value) !=1)
-								return clean_up(fp_restore, fp, "ERROR: failed to read input\n");
+								return clean_up(fp_restore, fp, "ERROR: failed to read input (quant)\n");
 							(my_features[idx-1].f_quant).mean += dble_value;
 							(my_features[idx-1].f_quant).feature_min = min((my_features[idx-1].f_quant).feature_min,dble_value);
 							(my_features[idx-1].f_quant).feature_max = max((my_features[idx-1].f_quant).feature_max,dble_value);
 							break;
 						case ORD:
 							if(sscanf(p, "%lf",&dble_value) !=1)
-								return clean_up(fp_restore, fp, "ERROR: failed to read input\n");
+								return clean_up(fp_restore, fp, "ERROR: failed to read input (ord)\n");
 							(my_features[idx-1].f_ord).min = min((my_features[idx-1].f_ord).min,(int)dble_value);
 							(my_features[idx-1].f_ord).max = max((my_features[idx-1].f_ord).max,(int)dble_value);
 							break;
@@ -637,6 +637,7 @@ int main(int argc,char **argv)
 						{
 							fprintf(fp_save, "%.16g ", (my_features[i].f_ord).ranks[j - (my_features[i].f_ord).min]);
 						}
+						fprintf(fp_save, "\n");
 						break;
 				}
 			}
