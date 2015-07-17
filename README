@@ -138,10 +138,12 @@ options:
 	1 -- polynomial: (gamma*u'*v + coef0)^degree
 	2 -- radial basis function: exp(-gamma*|u-v|^2)
 	3 -- sigmoid: tanh(gamma*u'*v + coef0)
-	4 -- gower: #TODO
-	5 -- precomputed kernel (kernel values in training_set_file)
+	4 -- gower: kernel for heterogeneous data (cf. doc)
+	5 -- exponential-gower: exp(gamma*gower)/exp(gamma)
+	6 -- non-linear-giwer: TODO
+	7 -- precomputed kernel (kernel values in training_set_file)
 -d degree : set degree in kernel function (default 3)
--g gamma : set gamma in kernel function (default 1/num_features)
+-g gamma : set gamma in kernel function (default 1/num_features, , 0.1 for non-linear gower)
 -r coef0 : set coef0 in kernel function (default 0)
 -c cost : set the parameter C of C-SVC, epsilon-SVR, and nu-SVR (default 1)
 -n nu : set the parameter nu of nu-SVC, one-class SVM, and nu-SVR (default 0.5)

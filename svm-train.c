@@ -26,10 +26,12 @@ void exit_with_help()
 	"	1 -- polynomial: (gamma*u'*v + coef0)^degree\n"
 	"	2 -- radial basis function: exp(-gamma*|u-v|^2)\n"
 	"	3 -- sigmoid: tanh(gamma*u'*v + coef0)\n"
-	"	4 -- gower: #TODO\n"
-	"	5 -- precomputed kernel (kernel values in training_set_file)\n"
+	"	4 -- gower: kernel for heterogeneous data (cf. doc)\n"
+	"	5 -- exponential-gower: exp(gamma*gower)/exp(gamma)\n"
+	"	6 -- non-linear-giwer: TODO\n"
+	"	7 -- precomputed kernel (kernel values in training_set_file)\n"
 	"-d degree : set degree in kernel function (default 3)\n"
-	"-g gamma : set gamma in kernel function (default 1/num_features)\n"
+	"-g gamma : set gamma in kernel function (default 1/num_features, 0.1 for non-linear gower)\n"
 	"-r coef0 : set coef0 in kernel function (default 0)\n"
 	"-c cost : set the parameter C of C-SVC, epsilon-SVR, and nu-SVR (default 1)\n"
 	"-n nu : set the parameter nu of nu-SVC, one-class SVM, and nu-SVR (default 0.5)\n"
@@ -560,8 +562,15 @@ void read_problem(const char *filename)
 	}
 	
 	if(param.gamma == 0 && prob.max_index > 0)
-		param.gamma = 1.0/prob.max_index;
-
+		switch(param.kernel_type)
+		{
+			case NONLINGOWER:
+				param.gamma = 0.1;
+				break;
+			default:
+				param.gamma = 1.0/prob.max_index;
+				break;
+		}
 	if(param.kernel_type == PRECOMPUTED)
 		for(i=0;i<prob.l;i++)
 		{
