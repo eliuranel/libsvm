@@ -60,6 +60,7 @@ void do_cross_validation();
 struct svm_parameter param;		// set by parse_command_line
 struct svm_problem prob;		// set by read_problem
 struct svm_model *model;
+size_t elements;
 struct svm_node *x_space;
 int cross_validation;
 int nr_fold;
@@ -284,7 +285,7 @@ void read_problem(const char *filename)
 {
 	int max_index, inst_max_index, i, int_val1, int_val2, i_min, i_max, num_line;
 	double dbl_val1, dbl_val2, dbl_val3, dbl_val4;
-	size_t elements, j;
+	size_t j;
 	FILE *fp = fopen(filename,"r");
 	char *endptr;
 	char *idx, *val, *label, *idx_min, *idx_max;
@@ -532,11 +533,7 @@ void read_problem(const char *filename)
 						val = strtok(NULL," \t\n");
 						if(val == NULL)
 							break;
-//						printf("val is %s\n", val);
-//						printf("%d\n", strlen(val));
-						(x_space[j].value).nom = Malloc(char, strlen(val));
-						strcpy((x_space[j].value).nom, val);
-//						printf("what I store is %s\n", (x_space[j].value).nom);
+						(x_space[j].value).nom = strdup(val);
 						break;
 				}
 			} else {
@@ -567,6 +564,9 @@ void read_problem(const char *filename)
 			case NONLINGOWER:
 				param.gamma = 0.1;
 				break;
+			case EXPGOWER:
+				printf("ERROR : Kernel Gower exponaential, gamma non initialized\n");
+				exit(1);
 			default:
 				param.gamma = 1.0/prob.max_index;
 				break;

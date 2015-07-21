@@ -127,6 +127,7 @@ void Cache::lru_insert(head_t *h)
 
 int Cache::get_data(const int index, Qfloat **data, int len)
 {
+//	if(index<0){printf("%d\n",index);}
 	head_t *h = &head[index];
 	if(h->len) lru_delete(h);
 	int more = len - h->len;
@@ -256,7 +257,7 @@ private:
 	}
 	double kernel_exp_gower(int i, int j) const
 	{
-		return exp(gamma*(gower(data_types,x[i],x[j])))/exp(gamma);
+		return exp(gamma*(gower(data_types,x[i],x[j])-1));
 	}
 	double kernel_non_lin_gower(int i, int j) const
 	{
@@ -367,13 +368,18 @@ double Kernel::heterogeneouscoeff (int* pdata_types, svm_node px, svm_node py)
 
 double Kernel::gower (int* pdata_types, const svm_node *px, const svm_node *py)
 {
+	printf("(%d,%f) and (%d,%f) :",px->index,px->value.ord,py->index,py->value.ord);
 	double sum = 0;
+	int cmpt = 0;
 	while(px->index != -1 && py->index != -1)
 	{
 		if(px->index == py->index)
 		{
 			if (heterogeneouscoeff(pdata_types, *px, *py) != -1)
-				sum += heterogeneouscoeff(pdata_types, *px, *py); //TODO : OK ???
+			{
+				sum += heterogeneouscoeff(pdata_types, *px, *py);
+				cmpt += 1;
+			}
 			px++;
 			py++;
 		}
@@ -385,6 +391,10 @@ double Kernel::gower (int* pdata_types, const svm_node *px, const svm_node *py)
 				px++;
 		}			
 	}
+	sum = sum/(double)cmpt;
+	printf("%f\n",sum);
+	if(sum>1){ printf("gower > 1 !!!!\n"); exit(1); }
+	if(sum<0){ printf("gower < 0 !!!!\n"); exit(1); }
 	return sum;
 }
 
@@ -467,7 +477,7 @@ double Kernel::k_function(int* data_types,
 		case GOWER:
 			return gower(data_types,x,y);
 		case EXPGOWER:
-			return exp(param.gamma*(gower(data_types,x,y)))/exp(param.gamma);
+			return exp(param.gamma*(gower(data_types,x,y)-1));
 		case NONLINGOWER:
 		{
 			double sg = gower(data_types,x,y);
@@ -681,7 +691,9 @@ void Solver::Solve(int l, const QMatrix& Q, const double *p_, const schar *y_,
 			info(".");
 		}
 
-		int i,j;
+		int i=0;
+		int j=0;
+//		printf("avant le if, j : %d\n",j);
 		if(select_working_set(i,j)!=0)
 		{
 			// reconstruct the whole gradient
@@ -694,7 +706,7 @@ void Solver::Solve(int l, const QMatrix& Q, const double *p_, const schar *y_,
 			else
 				counter = 1;	// do shrinking next iteration
 		}
-		
+//		printf("apres le if, j : %d\n",j);
 		++iter;
 
 		// update alpha[i] and alpha[j], handle bounds carefully
@@ -948,7 +960,6 @@ int Solver::select_working_set(int &out_i, int &out_j)
 						obj_diff = -(grad_diff*grad_diff)/quad_coef;
 					else
 						obj_diff = -(grad_diff*grad_diff)/TAU;
-
 					if (obj_diff <= obj_diff_min)
 					{
 						Gmin_idx=j;
@@ -972,7 +983,6 @@ int Solver::select_working_set(int &out_i, int &out_j)
 						obj_diff = -(grad_diff*grad_diff)/quad_coef;
 					else
 						obj_diff = -(grad_diff*grad_diff)/TAU;
-
 					if (obj_diff <= obj_diff_min)
 					{
 						Gmin_idx=j;
