@@ -218,7 +218,7 @@ void predict(FILE *input, FILE *output)
 						val = strtok(NULL," \t\n");
 						if(val == NULL)
 							break;
-						(x[i].value).nom = val;
+						(x[i].value).nom = strdup(val);
 						break;
 				}
 			} else {
@@ -233,6 +233,13 @@ void predict(FILE *input, FILE *output)
 			++i;
 		}
 		x[i].index = -1;
+		
+		/*while (x->index != -1)
+		{
+			output_svm_node(data_types,x);
+			x++;
+		}
+		printf("\n\n");*/
 		
 		if (predict_probability && (svm_type==C_SVC || svm_type==NU_SVC))
 		{
@@ -334,6 +341,17 @@ int main(int argc, char **argv)
 		fprintf(stderr,"can't open model file %s\n",argv[i+1]);
 		exit(1);
 	}
+	
+	/*for (int j=0; j<model->l; j++)
+	{
+		while(model->SV[j]->index != -1)
+		{
+			output_svm_node(data_types, model->SV[j]);
+			model->SV[j]++;
+		}
+		printf("\n\n");
+	}
+	printf("\n\n\n\n");*/
 
 	x = (struct svm_node *) malloc(max_nr_attr*sizeof(struct svm_node));
 	if(predict_probability)

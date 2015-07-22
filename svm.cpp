@@ -368,7 +368,7 @@ double Kernel::heterogeneouscoeff (int* pdata_types, svm_node px, svm_node py)
 
 double Kernel::gower (int* pdata_types, const svm_node *px, const svm_node *py)
 {
-	printf("(%d,%f) and (%d,%f) :",px->index,px->value.ord,py->index,py->value.ord);
+//	printf("(%d,%f) and (%d,%f) : ",px->index,px->value.ord,py->index,py->value.ord);
 	double sum = 0;
 	int cmpt = 0;
 	while(px->index != -1 && py->index != -1)
@@ -392,9 +392,9 @@ double Kernel::gower (int* pdata_types, const svm_node *px, const svm_node *py)
 		}			
 	}
 	sum = sum/(double)cmpt;
-	printf("%f\n",sum);
-	if(sum>1){ printf("gower > 1 !!!!\n"); exit(1); }
-	if(sum<0){ printf("gower < 0 !!!!\n"); exit(1); }
+//	printf("%f\n",sum);
+	if(sum>1){ printf("gower > 1 !!!! %f\n",sum); exit(1); }
+	if(sum<0){ printf("gower < 0 !!!! %f\n",sum); exit(1); }
 	return sum;
 }
 
@@ -3110,18 +3110,18 @@ svm_model *svm_load_model(int *data_types, const char *model_file_name)
 		readline(fp);
 		model->SV[i] = &x_space[j];
 
-		p = strtok(line, " \t");
+		p = strtok(line, " \t\n");
 		model->sv_coef[0][i] = strtod(p,&endptr);
 		for(int k=1;k<m;k++)
 		{
-			p = strtok(NULL, " \t");
+			p = strtok(NULL, " \t\n");
 			model->sv_coef[k][i] = strtod(p,&endptr);
 		}
 
 		while(1)
 		{
 			idx = strtok(NULL, ":");
-			
+//			printf("index : %s\n",idx);
 			if(idx == NULL)
 				break;
 
@@ -3138,6 +3138,7 @@ svm_model *svm_load_model(int *data_types, const char *model_file_name)
 			errno = 0;
 			
 			if(data_types[0] != 0) {
+//				printf("data type : %d\n",data_types[x_space[j].index]);
 				switch(data_types[x_space[j].index]) //look at the type of the variable
 				{
 					case -1:
@@ -3145,10 +3146,11 @@ svm_model *svm_load_model(int *data_types, const char *model_file_name)
 						break;
 					case QUANT:
 						val = strtok(NULL," \t\n");
+//						printf("value : %s\n",val);
 						if(val == NULL)
 							break;
 						(x_space[j].value).quant = strtod(val,&endptr);
-						if(endptr == val || errno != 0 || (*endptr != '\0' && !isspace(*endptr)))
+						//if(endptr == val || errno != 0 || (*endptr != '\0' && !isspace(*endptr)))
 							//exit_input_error(i+1); TODO : return error ?
 						break;
 					case DICH:
@@ -3161,10 +3163,11 @@ svm_model *svm_load_model(int *data_types, const char *model_file_name)
 						break;
 					case ORD:
 						val = strtok(NULL," \t\n");
+//						printf("value : %s\n",val);
 						if(val == NULL)
 							break;
 						(x_space[j].value).ord = strtod(val,&endptr);
-						if(endptr == val || errno != 0 || (*endptr != '\0' && !isspace(*endptr)))
+						//if(endptr == val || errno != 0 || (*endptr != '\0' && !isspace(*endptr)))
 							//exit_input_error(i+1); TODO : return error ?
 						break;
 					case C_CIRC:
@@ -3172,7 +3175,7 @@ svm_model *svm_load_model(int *data_types, const char *model_file_name)
 						if(val == NULL)
 							break;
 						(x_space[j].value).c_circ = strtod(val,&endptr);
-						if(endptr == val || errno != 0 || (*endptr != '\0' && !isspace(*endptr)))
+						//if(endptr == val || errno != 0 || (*endptr != '\0' && !isspace(*endptr)))
 							//exit_input_error(i+1); TODO : return error ?
 						break;
 					case D_CIRC:
@@ -3180,14 +3183,14 @@ svm_model *svm_load_model(int *data_types, const char *model_file_name)
 						if(val == NULL)
 							break;
 						int_val1 = (int)strtol(val,&endptr,10); //TODO qu'est-ce que le 10 ??
-						if(endptr == val || errno != 0 || (*endptr != '\0' && !isspace(*endptr)))
+						//if(endptr == val || errno != 0 || (*endptr != '\0' && !isspace(*endptr)))
 							//exit_input_error(i+1); TODO : return error ?
 						
 						val = strtok(NULL," \t\n");
 						if(val == NULL)
 							break;
 						int_val2 = (int)strtol(val,&endptr,10); //TODO qu'est-ce que le 10 ??
-						if(endptr == val || errno != 0 || (*endptr != '\0' && !isspace(*endptr)))
+						//if(endptr == val || errno != 0 || (*endptr != '\0' && !isspace(*endptr)))
 							//exit_input_error(i+1); TODO : return error ?
 						
 						(x_space[j].value).d_circ = (struct int_pair){.first = int_val1, .second = int_val2};
@@ -3197,27 +3200,27 @@ svm_model *svm_load_model(int *data_types, const char *model_file_name)
 						if(val == NULL)
 							break;
 						dbl_val1 = strtod(val,&endptr);
-						if(endptr == val || errno != 0 || (*endptr != '\0' && !isspace(*endptr)))
+						//if(endptr == val || errno != 0 || (*endptr != '\0' && !isspace(*endptr)))
 							//exit_input_error(i+1); TODO : return error ?
 						
 						val = strtok(NULL,",");
 						if(val == NULL)
 							break;
 						dbl_val2 = strtod(val,&endptr);
-						if(endptr == val || errno != 0 || (*endptr != '\0' && !isspace(*endptr)))
+						//if(endptr == val || errno != 0 || (*endptr != '\0' && !isspace(*endptr)))
 							//exit_input_error(i+1); TODO : return error ?
 						val = strtok(NULL,",");
 						if(val == NULL)
 							break;
 						dbl_val3 = strtod(val,&endptr);
-						if(endptr == val || errno != 0 || (*endptr != '\0' && !isspace(*endptr)))
+						//if(endptr == val || errno != 0 || (*endptr != '\0' && !isspace(*endptr)))
 							//exit_input_error(i+1); TODO : return error ?
 						
 						val = strtok(NULL," \t\n");
 						if(val == NULL)
 							break;
 						dbl_val4 = strtod(val,&endptr);
-						if(endptr == val || errno != 0 || (*endptr != '\0' && !isspace(*endptr)))
+						//if(endptr == val || errno != 0 || (*endptr != '\0' && !isspace(*endptr)))
 							//exit_input_error(i+1); TODO : return error ?
 						
 						(x_space[j].value).fuzz = (struct fuzzy) {.center = dbl_val1, .left = dbl_val2, .right = dbl_val3, .height = dbl_val4};
@@ -3227,10 +3230,10 @@ svm_model *svm_load_model(int *data_types, const char *model_file_name)
 						break;
 					case NOM:
 						val = strtok(NULL," \t\n");
+//						printf("value : %s\n",val);
 						if(val == NULL)
 							break;
-						(x_space[j].value).nom = Malloc(char, strlen(val));
-						strcpy((x_space[j].value).nom, val);
+						(x_space[j].value).nom = strdup(val);
 						break;
 				}
 			} else {
