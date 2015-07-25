@@ -835,7 +835,18 @@ void output_quant(int index, double value)
 		value = value - (my_features[index-1].f_quant).mean;
 		value = value / (my_features[index-1].f_quant).standard_deviation;
 	}
-	value = value / fabs((my_features[index-1].f_quant).feature_max - (my_features[index-1].f_quant).feature_min);
+	if (value < (my_features[index-1].f_quant).feature_min )
+	{
+		value = (my_features[index-1].f_quant).feature_min / fabs((my_features[index-1].f_quant).feature_max - (my_features[index-1].f_quant).feature_min);
+	} 
+	else if ( value > (my_features[index-1].f_quant).feature_max )
+	{
+		value = (my_features[index-1].f_quant).feature_max / fabs((my_features[index-1].f_quant).feature_max - (my_features[index-1].f_quant).feature_min);
+	} 
+	else
+	{
+		value = value / fabs((my_features[index-1].f_quant).feature_max - (my_features[index-1].f_quant).feature_min);
+	}
 	printf("%d:%g ",index, value);
 }
 

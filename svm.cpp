@@ -368,13 +368,14 @@ double Kernel::heterogeneouscoeff (int* pdata_types, svm_node px, svm_node py)
 
 double Kernel::gower (int* pdata_types, const svm_node *px, const svm_node *py)
 {
-//	printf("(%d,%f) and (%d,%f) : ",px->index,px->value.ord,py->index,py->value.ord);
+	printf("(%d,%f) and (%d,%f) :\n",px->index,px->value.ord,py->index,py->value.ord);
 	double sum = 0;
 	int cmpt = 0;
 	while(px->index != -1 && py->index != -1)
 	{
 		if(px->index == py->index)
 		{
+			printf("%f ; ",heterogeneouscoeff(pdata_types, *px, *py));
 			if (heterogeneouscoeff(pdata_types, *px, *py) != -1)
 			{
 				sum += heterogeneouscoeff(pdata_types, *px, *py);
@@ -389,8 +390,9 @@ double Kernel::gower (int* pdata_types, const svm_node *px, const svm_node *py)
 				py++;
 			else
 				px++;
-		}			
+		}
 	}
+	printf("\n");
 	sum = sum/(double)cmpt;
 //	printf("%f\n",sum);
 	if(sum>1){ printf("gower > 1 !!!! %f\n",sum); exit(1); }
