@@ -50,7 +50,7 @@ struct svm_problem
 };
 
 enum { C_SVC, NU_SVC, ONE_CLASS, EPSILON_SVR, NU_SVR };     /* svm_type */
-enum { LINEAR, POLY, RBF, SIGMOID, GOWER, EXPGOWER, NONLINGOWER, PRECOMPUTED };    /* kernel_type */
+enum { LINEAR, POLY, RBF, SIGMOID, GOWER, EXPGOWER, SIGMOIDGOWER, PRECOMPUTED };    /* kernel_type */
 enum { QUANT, DICH, ORD, C_CIRC, D_CIRC, FUZZ, MULT, NOM }; /* data_types*/
 
 
@@ -103,6 +103,7 @@ struct svm_model
 };
 
 struct svm_model *svm_train(const struct svm_problem *prob, const struct svm_parameter *param);
+double svm_distance_index_validation(const svm_problem *prob, const svm_parameter *param);
 void svm_cross_validation(const struct svm_problem *prob, const struct svm_parameter *param, int nr_fold, double *target);
 
 int svm_save_model(const char *model_file_name, int *data_types, const struct svm_model *model);

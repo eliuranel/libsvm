@@ -41,6 +41,7 @@ void exit_with_help()
 	"-h shrinking : whether to use the shrinking heuristics, 0 or 1 (default 1)\n"
 	"-b probability_estimates : whether to train a SVC or SVR model for probability estimates, 0 or 1 (default 0)\n"
 	"-wi weight : set the parameter C of class i to weight*C, for C-SVC (default 1)\n"
+	"-i : distance index validation mode\n"
 	"-v n: n-fold cross validation mode\n"
 	"-q : quiet mode (no outputs)\n"
 	);
@@ -56,12 +57,14 @@ void exit_input_error(int line_num)
 void parse_command_line(int argc, char **argv, char *input_file_name, char *model_file_name);
 void read_problem(const char *filename);
 void do_cross_validation();
+void do_distance_index_validation();
 
 struct svm_parameter param;		// set by parse_command_line
 struct svm_problem prob;		// set by read_problem
 struct svm_model *model;
 size_t elements;
 struct svm_node *x_space;
+int distance_index_validation;
 int cross_validation;
 int nr_fold;
 
@@ -105,6 +108,10 @@ int main(int argc, char **argv)
 	if(cross_validation)
 	{
 		do_cross_validation();
+	}
+	else if(distance_index_validation)
+	{
+		do_distance_index_validation();
 	}
 	else
 	{
@@ -162,6 +169,12 @@ void do_cross_validation()
 		printf("Cross Validation Accuracy = %g%%\n",100.0*total_correct/prob.l);
 	}
 	free(target);
+}
+
+void do_distance_index_validation()
+{
+	double index = svm_distance_index_validation(&prob,&param);
+	printf("distance index = %g\n",index);
 }
 
 void parse_command_line(int argc, char **argv, char *input_file_name, char *model_file_name)
@@ -233,6 +246,10 @@ void parse_command_line(int argc, char **argv, char *input_file_name, char *mode
 				break;
 			case 'q':
 				print_func = &print_null;
+				i--;
+				break;
+			case 'i':
+				distance_index_validation = 1;
 				i--;
 				break;
 			case 'v':
@@ -561,12 +578,9 @@ void read_problem(const char *filename)
 	if(param.gamma == 0 && prob.max_index > 0)
 		switch(param.kernel_type)
 		{
-			case NONLINGOWER:
+			case SIGMOIDGOWER:
 				param.gamma = 0.1;
 				break;
-			case EXPGOWER:
-				printf("ERROR : Kernel Gower exponaential, gamma non initialized\n");
-				exit(1);
 			default:
 				param.gamma = 1.0/prob.max_index;
 				break;

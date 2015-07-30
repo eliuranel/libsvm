@@ -257,13 +257,27 @@ private:
 	}
 	double kernel_exp_gower(int i, int j) const
 	{
+//		if(exp(gamma*(gower(data_types,x[i],x[j])-1))>1){ printf("gower > 1 !!!! %f\n",exp(gamma*(gower(data_types,x[i],x[j])-1))); exit(1); }
+//		if(exp(gamma*(gower(data_types,x[i],x[j])-1))<0){ printf("gower < 0 !!!! %f\n",exp(gamma*(gower(data_types,x[i],x[j])-1))); exit(1); }
 		return exp(gamma*(gower(data_types,x[i],x[j])-1));
 	}
-	double kernel_non_lin_gower(int i, int j) const
+	double kernel_sigmoid_gower(int i, int j) const
 	{
 		double sg = gower(data_types,x[i],x[j]);
-		if (sg < 1/2) { return -gamma/(sg-.5-(-.25+.5*sqrt(.25+4*gamma)))-(-.25+.5*sqrt(.25+4*gamma)); }
-		else { return -gamma/(sg-.5+(-.25+.5*sqrt(.25+4*gamma)))+(-.25+.5*sqrt(.25+4*gamma))+1; } 
+		if (sg < 1/2) 
+		{ 
+			double s = -gamma/(sg-.5-(-.25+.5*sqrt(.25+4*gamma)))-(-.25+.5*sqrt(.25+4*gamma));
+			if (s > 1){ printf("sim > 1 !!!! %f\n",s); exit(1); }
+			if (s < 0){ printf("sim < 0 !!!! %f\n",s); exit(1); }
+			return s;
+		}
+		else 
+		{
+			double s = -gamma/(sg-.5+(-.25+.5*sqrt(.25+4*gamma)))+(-.25+.5*sqrt(.25+4*gamma))+1;
+			if (s > 1){ printf("sim > 1 !!!! %f\n",s); exit(1); }
+			if (s < 0){ printf("sim < 0 !!!! %f\n",s); exit(1); }
+			return s;
+		}
 	}
 	double kernel_precomputed(int i, int j) const
 	{
@@ -295,8 +309,8 @@ Kernel::Kernel(int l, int max_index, int* data_types_, svm_node * const * x_, co
 		case EXPGOWER:
 			kernel_function = &Kernel::kernel_exp_gower;
 			break;
-		case NONLINGOWER:
-			kernel_function = &Kernel::kernel_non_lin_gower;
+		case SIGMOIDGOWER:
+			kernel_function = &Kernel::kernel_sigmoid_gower;
 			break;
 		case PRECOMPUTED:
 			kernel_function = &Kernel::kernel_precomputed;
@@ -368,14 +382,14 @@ double Kernel::heterogeneouscoeff (int* pdata_types, svm_node px, svm_node py)
 
 double Kernel::gower (int* pdata_types, const svm_node *px, const svm_node *py)
 {
-	printf("(%d,%f) and (%d,%f) :\n",px->index,px->value.ord,py->index,py->value.ord);
+//	printf("(%d,%f) and (%d,%f) :\n",px->index,px->value.ord,py->index,py->value.ord);
 	double sum = 0;
 	int cmpt = 0;
 	while(px->index != -1 && py->index != -1)
 	{
 		if(px->index == py->index)
 		{
-			printf("%f ; ",heterogeneouscoeff(pdata_types, *px, *py));
+//			printf("%f ; ",heterogeneouscoeff(pdata_types, *px, *py));
 			if (heterogeneouscoeff(pdata_types, *px, *py) != -1)
 			{
 				sum += heterogeneouscoeff(pdata_types, *px, *py);
@@ -392,7 +406,7 @@ double Kernel::gower (int* pdata_types, const svm_node *px, const svm_node *py)
 				px++;
 		}
 	}
-	printf("\n");
+//	printf("\n");
 	sum = sum/(double)cmpt;
 //	printf("%f\n",sum);
 	if(sum>1){ printf("gower > 1 !!!! %f\n",sum); exit(1); }
@@ -479,12 +493,26 @@ double Kernel::k_function(int* data_types,
 		case GOWER:
 			return gower(data_types,x,y);
 		case EXPGOWER:
+//			if(exp(param.gamma*(gower(data_types,x,y)-1))>1){ printf("gower > 1 !!!! %f\n",exp(param.gamma*(gower(data_types,x,y)-1))); exit(1); }
+//			if(exp(param.gamma*(gower(data_types,x,y)-1))<0){ printf("gower < 0 !!!! %f\n",exp(param.gamma*(gower(data_types,x,y)-1))); exit(1); }
 			return exp(param.gamma*(gower(data_types,x,y)-1));
-		case NONLINGOWER:
+		case SIGMOIDGOWER:
 		{
 			double sg = gower(data_types,x,y);
-			if (sg < 1/2) { return -param.gamma/(sg-.5-(-.25+.5*sqrt(.25+4*param.gamma)))-(-.25+.5*sqrt(.25+4*param.gamma)); }
-			else { return -param.gamma/(sg-.5+(-.25+.5*sqrt(.25+4*param.gamma)))+(-.25+.5*sqrt(.25+4*param.gamma))+1; }
+			if (sg < 1/2) 
+			{
+				double s = -param.gamma/(sg-.5-(-.25+.5*sqrt(.25+4*param.gamma)))-(-.25+.5*sqrt(.25+4*param.gamma));
+				if (s > 1){ printf("sim > 1 !!!! %f\n",s); exit(1); }
+				if (s < 0){ printf("sim < 0 !!!! %f\n",s); exit(1); }
+				return s;
+			}
+			else 
+			{
+				double s = -param.gamma/(sg-.5+(-.25+.5*sqrt(.25+4*param.gamma)))+(-.25+.5*sqrt(.25+4*param.gamma))+1;
+				if (s > 1){ printf("sim > 1 !!!! %f\n",s); exit(1); }
+				if (s < 0){ printf("sim < 0 !!!! %f\n",s); exit(1); }
+				return s;
+			}
 		}
 		case PRECOMPUTED:  //x: test (validation), y: SV
 			return (x[(int)((y->value).quant)].value).quant;
@@ -2470,6 +2498,83 @@ svm_model *svm_train(const svm_problem *prob, const svm_parameter *param)
 	return model;
 }
 
+// Distance Index Validation
+double svm_distance_index_validation(const svm_problem *prob, const svm_parameter *param)
+{
+	int i,j,k1,k2; //loop counters
+  
+	int l = prob->l;
+	int nr_class;
+	int *label = NULL;
+	int *start = NULL;
+	int *count = NULL;
+	int *perm = Malloc(int,l);
+	
+	svm_group_classes(prob,&nr_class,&label,&start,&count,perm);
+	if(nr_class == 1)
+	{
+		info("WARNING: distance index validation only available when there is several classes. See README for details.\n");
+		exit(1);
+	}
+	
+	svm_node **x = Malloc(svm_node *,l);
+
+	for(i=0;i<l;i++)
+		x[i] = prob->x[perm[i]];
+	
+	double accu;
+	double **distances;
+	distances = Malloc(double*,nr_class);
+	for(i=0;i<nr_class;i++)
+	{
+		distances[i] = Malloc(double,nr_class);
+	}
+	for(i=0;i<nr_class;i++)
+	{
+		for(j=i;j<nr_class;j++)
+		{
+			int ci = count[i], cj = count[j];
+			accu = 0;
+			for(k1=0;k1<ci;k1++)
+			{
+				for(k2=0;k2<cj;k2++)
+				{
+					accu += Kernel::k_function(prob->data_types,x[start[i]+k1],x[start[j]+k2],*param);
+				}
+			}
+			accu = accu/(double)(ci*cj);
+			distances[i][j] = accu;
+		}
+	}
+	
+	double index = 0;
+	for(i=0;i<nr_class;i++)
+	{
+		for(j=i+1;j<nr_class;j++)
+		{
+			double index_temp;
+			index_temp = distances[i][i] + distances[j][j] - 2*distances[i][j];
+			index_temp = sqrt(index_temp);
+			index += index_temp;
+		}
+	}
+	index = index/(double)nr_class;
+	
+	for(i=0;i<nr_class;i++)
+	{
+		free(distances[i]);
+	}
+	free(distances);
+	free(label);
+	free(count);
+	free(perm);
+	free(start);
+	free(x);
+	
+	return index;
+}
+
+
 // Stratified cross validation
 void svm_cross_validation(const svm_problem *prob, const svm_parameter *param, int nr_fold, double *target)
 {
@@ -2795,7 +2900,7 @@ int svm_save_model(const char *model_file_name, int *data_types, const svm_model
 	if(param.kernel_type == POLY)
 		fprintf(fp,"degree %d\n", param.degree);
 
-	if(param.kernel_type == POLY || param.kernel_type == RBF || param.kernel_type == SIGMOID)
+	if(param.kernel_type == POLY || param.kernel_type == RBF || param.kernel_type == SIGMOID || param.kernel_type == EXPGOWER || param.kernel_type == SIGMOIDGOWER)
 		fprintf(fp,"gamma %g\n", param.gamma);
 
 	if(param.kernel_type == POLY || param.kernel_type == SIGMOID)
@@ -3338,7 +3443,7 @@ const char *svm_check_parameter(const svm_problem *prob, const svm_parameter *pa
 	   kernel_type != SIGMOID &&
 	   kernel_type != GOWER &&
 	   kernel_type != EXPGOWER &&
-	   kernel_type != NONLINGOWER &&
+	   kernel_type != SIGMOIDGOWER &&
 	   kernel_type != PRECOMPUTED)
 		return "unknown kernel type";
 
