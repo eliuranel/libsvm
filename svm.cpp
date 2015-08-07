@@ -40,6 +40,8 @@ static inline double powi(double base, int times)
 #define TAU 1e-12
 #define Malloc(type,n) (type *)malloc((n)*sizeof(type))
 
+double tolerance = 0.0000000001;
+
 static void print_string_stdout(const char *s)
 {
 	fputs(s,stdout);
@@ -264,18 +266,23 @@ private:
 	double kernel_sigmoid_gower(int i, int j) const
 	{
 		double sg = gower(data_types,x[i],x[j]);
-		if (sg < 1/2) 
+		double ap = (-.25+.5*sqrt(.25+4*gamma));
+		if (sg < .5) 
 		{ 
-			double s = -gamma/(sg-.5-(-.25+.5*sqrt(.25+4*gamma)))-(-.25+.5*sqrt(.25+4*gamma));
-			if (s > 1){ printf("sim > 1 !!!! %f\n",s); exit(1); }
-			if (s < 0){ printf("sim < 0 !!!! %f\n",s); exit(1); }
+			double s = -gamma/(sg-.5-ap)-ap;
+			if (s > (1+tolerance)){ printf("< 1/2 :: sim > 1 !!!! %f\n",s); exit(1); }
+			if (s < (-tolerance)){ printf("< 1/2 :: sim < 0 !!!! %1.10f , %f\n",s,sg); exit(1); }
+			if (s > 1){s = 1L;}
+			if (s < 0){s = 0L;}
 			return s;
 		}
 		else 
 		{
-			double s = -gamma/(sg-.5+(-.25+.5*sqrt(.25+4*gamma)))+(-.25+.5*sqrt(.25+4*gamma))+1;
-			if (s > 1){ printf("sim > 1 !!!! %f\n",s); exit(1); }
-			if (s < 0){ printf("sim < 0 !!!! %f\n",s); exit(1); }
+			double s = -gamma/(sg-.5+ap)+ap+1;
+			if (s > (1+tolerance)){ printf("> 1/2 :: sim > 1 !!!! %f , %f\n",s,sg); exit(1); }
+			if (s < (-tolerance)){ printf("> 1/2 :: sim < 0 !!!! %f , %f\n",s,sg); exit(1); }
+			if (s > 1){s = 1L;}
+			if (s < 0){s = 0L;}
 			return s;
 		}
 	}
@@ -499,18 +506,23 @@ double Kernel::k_function(int* data_types,
 		case SIGMOIDGOWER:
 		{
 			double sg = gower(data_types,x,y);
-			if (sg < 1/2) 
+			double ap = (-.25+.5*sqrt(.25+4*param.gamma));
+			if (sg < .5) 
 			{
-				double s = -param.gamma/(sg-.5-(-.25+.5*sqrt(.25+4*param.gamma)))-(-.25+.5*sqrt(.25+4*param.gamma));
-				if (s > 1){ printf("sim > 1 !!!! %f\n",s); exit(1); }
-				if (s < 0){ printf("sim < 0 !!!! %f\n",s); exit(1); }
+				double s = -param.gamma/(sg-.5-ap)-ap;
+				if (s > (1+tolerance)){ printf("< 1/2 : sim > 1 !!!! %f\n",s); exit(1); }
+				if (s < (-tolerance)){ printf("< 1/2 : sim < 0 !!!! %10f\n",s); exit(1); }
+				if (s > 1){s = 1L;}
+				if (s < 0){s = 0L;}
 				return s;
 			}
 			else 
 			{
-				double s = -param.gamma/(sg-.5+(-.25+.5*sqrt(.25+4*param.gamma)))+(-.25+.5*sqrt(.25+4*param.gamma))+1;
-				if (s > 1){ printf("sim > 1 !!!! %f\n",s); exit(1); }
-				if (s < 0){ printf("sim < 0 !!!! %f\n",s); exit(1); }
+				double s = -param.gamma/(sg-.5+ap)+ap+1;
+				if (s > (1+tolerance)){ printf("> 1/2 : sim > 1 !!!! %f\n",s); exit(1); }
+				if (s < (-tolerance)){ printf("> 1/2 : sim < 0 !!!! %f\n",s); exit(1); }
+				if (s > 1){s = 1L;}
+				if (s < 0){s = 0L;}
 				return s;
 			}
 		}

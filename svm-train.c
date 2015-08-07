@@ -174,7 +174,7 @@ void do_cross_validation()
 void do_distance_index_validation()
 {
 	double index = svm_distance_index_validation(&prob,&param);
-	printf("distance index = %g\n",index);
+	printf("distance index = %f\n",index);
 }
 
 void parse_command_line(int argc, char **argv, char *input_file_name, char *model_file_name)
